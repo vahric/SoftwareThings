@@ -1,0 +1,84 @@
+cluster_name : its important to indicate which cassandra cluster node will join
+authenticator : default there is no authorization need ,if you need it change it to PasswordAuthenticator 
+partitioner : how to distribute data across the nodes in the cluster , leave default until you know what you are doing
+**IMPORTANT: if you need to change partitioner then you need to reload data
+data_file_directories : Path where cassandra data will be
+commitlog_directory : Put seperate partition disk if you are using HDD
+	When write occur first its stored in log then mem and finally flush to SSTable(disk)
+saved_caches_directory : help cold start problems
+seed_provider/seeds : Cassandra nodes find each other from this list
+listen_address : Address of connect cassandra nodes(cassandra-to-casandra), do not set 0.0.0.0
+rpc_address : Address of client access (client-to-cassandra)
+
+
+Lets change cassandra.yml (/etc/cassandra/conf/cassandra.yaml)
+
+First i will stop cassandra , no needed but we will need after config update, i have a test system and do not care about :D
+
+systemctl stop cassandra
+
+sed -i "s/cluster_name: 'Test Cluster'/cluster_name: 'VCluster'/g" /etc/cassandra/conf/cassandra.yaml
+rm -rf /var/lib/cassandra/data/system/*
+
+sed -i 's/endpoint_snitch: SimpleSnitch/endpoint_snitch: GossipingPropertyFileSnitch/g' /etc/cassandra/conf/cassandra.yaml
+
+sed -i 's/- seeds: "127.0.0.1"/- seeds: "10.111.60.130,10.111.60.131,10.111.60.132"/g' /etc/cassandra/conf/cassandra.yaml
+
+sed -i 's/listen_address: localhost/listen_address: 10.111.60.130/g' /etc/cassandra/conf/cassandra.yaml
+sed -i 's/rpc_address: localhost/rpc_address: 10.111.60.130/g' /etc/cassandra/conf/cassandra.yaml
+
+sh -c "echo 'auto_bootstrap: false' >> /etc/cassandra/conf/cassandra.yaml "
+
+systemctl start cassandra
+or
+service cassandra start
+
+[root@cassandra1 ~]# nodetool status
+Datacenter: dc1
+===============
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address        Load       Tokens       Owns (effective)  Host ID                               Rack
+UN  10.111.60.130  100.41 KiB  256          100.0%            8087c43c-00d2-4670-8951-2b8dc879eeaf  rack1
+
+Then switch other nodes, repeat all steps 
+Keep in your mind firewalls should  be disabled or allowed for some ports ...
+
+its worked
+
+[root@cassandra1 ~]# nodetool status
+Datacenter: dc1
+===============
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address        Load       Tokens       Owns (effective)  Host ID                               Rack
+UN  10.111.60.132  103.64 KiB  256          67.3%             8b3db930-ae5a-457e-a4d2-3d740f53e936  rack1
+UN  10.111.60.131  103.66 KiB  256          67.9%             45c31ba9-0635-47d7-b669-12440182a221  rack1
+UN  10.111.60.130  100.41 KiB  256          64.7%             8087c43c-00d2-4670-8951-2b8dc879eeaf  rack1
+
+IMPORTANT
+
+For rackaware desing pls look /etc/cassandra/cassandra-rackdc.properties file
+
+
+Default Data Path : 
+
+/var/lib/cassandra Global Path 
+/var/lib/cassandra/data You can see the DBs there
+
+All Config Explanations 
+
+http://cassandra.apache.org/doc/latest/configuration/cassandra_config_file.html
+
+
+Dynamic Seeds
+
+https://github.com/Netflix/Priam/blob/master/priam-cass-extensions/src/main/java/com/netflix/priam/cassandra/extensions/NFSeedProvider.java
+
+Book
+
+https://teddyma.gitbooks.io/learncassandra/content/replication/partitioners.html
+
+Recommanded Prodcution Settings
+
+https://docs.datastax.com/en/dse/6.0/dse-admin/datastax_enterprise/config/configRecommendedSettings.html

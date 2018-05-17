@@ -1,0 +1,92 @@
+Cassandra is NOSQL
+Have simple commandline CQL like SQL
+
+This article is not applicable anymore!!!! because datastax do have community edition anymore !!
+https://academy.datastax.com/planet-cassandra/cassandra
+
+For installation be a root user or have a sudo right ! 
+
+Install yum-utils package (Optional)
+
+yum install yum-utils -y
+
+Get the key but first install wget if you do not have it (Optional)
+
+yum install wget -y
+
+To have cassandra we need java :D 
+yum install java -y
+
+[root@cassandra1 ~]# java -version
+openjdk version "1.8.0_171"
+OpenJDK Runtime Environment (build 1.8.0_171-b10)
+OpenJDK 64-Bit Server VM (build 25.171-b10, mixed mode)
+
+Plus you will need python pls install if you will use cqlsh
+
+Install via Repo
+
+Not: if you want you can download tarball too http://www.apache.org/dyn/closer.lua/cassandra/3.0.16/apache-cassandra-3.0.16-bin.tar.gz
+     http://cassandra.apache.org/download/
+     Maybe its more easy to start cassandra , untar and excute it via cassandra or cassandra -f
+
+Add Repo Informations ...
+
+vi /etc/yum.repos.d/cassandra.repo
+
+[cassandra]
+name=Apache Cassandra
+baseurl=https://www.apache.org/dist/cassandra/redhat/311x/
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://www.apache.org/dist/cassandra/KEYS
+
+yum install cassandra -y
+
+Start
+
+[root@cassandra1 ~]# systemctl start cassandra
+[root@cassandra1 ~]# systemctl status cassandra
+● cassandra.service - LSB: distributed storage system for structured data
+   Loaded: loaded (/etc/rc.d/init.d/cassandra; bad; vendor preset: disabled)
+   Active: active (running) since Wed 2018-05-16 15:33:27 +03; 6s ago
+     Docs: man:systemd-sysv-generator(8)
+  Process: 19620 ExecStop=/etc/rc.d/init.d/cassandra stop (code=exited, status=0/SUCCESS)
+  Process: 19668 ExecStart=/etc/rc.d/init.d/cassandra start (code=exited, status=0/SUCCESS)
+ Main PID: 19749 (java)
+   CGroup: /system.slice/cassandra.service
+           ‣ 19749 /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.171-7.b10.el7.x86_64/jre/bin/java -Xloggc:/var/log/cassandra/gc.log -ea -XX:+UseThreadPriorities -XX:ThreadPriorityPolicy=42 -XX:+He...
+
+May 16 15:33:27 cassandra1 systemd[1]: Starting LSB: distributed storage system for structured data...
+May 16 15:33:27 cassandra1 su[19678]: (to cassandra) root on none
+May 16 15:33:27 cassandra1 cassandra[19668]: Starting Cassandra: OK
+May 16 15:33:27 cassandra1 systemd[1]: Started LSB: distributed storage system for structured data.
+
+Get node status
+
+[root@cassandra1 ~]# nodetool status
+Datacenter: datacenter1
+=======================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address    Load       Tokens       Owns (effective)  Host ID                               Rack
+UN  127.0.0.1  160.51 KiB  256          100.0%            1ca1b903-c775-4b43-a2df-39cf3af19eea  rack1
+
+Config File Paths
+
+/etc/cassandra/
+
+Log Path 
+
+/var/log/cassandra/
+
+Startup Options
+
+/etc/default/cassandra
+
+GUI Tool for Cassandra
+
+http://razorsql.com/features/cassandra_database_client_gui.html
+Some useful links 
+
+https://anthonyspiteri.net/configuring-cassandra-for-vcloud-director-9-0-metrics/

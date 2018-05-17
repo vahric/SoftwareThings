@@ -1,0 +1,202 @@
+Example Create dB(keyspace), Table(Column Family) , Insert , Select and  things ...
+
+First connect cli
+
+[root@cassandra1 ~]# cqlsh
+Connected to Test Cluster at 127.0.0.1:9042.
+[cqlsh 5.0.1 | Cassandra 3.11.2 | CQL spec 3.4.4 | Native protocol v4]
+Use HELP for help
+
+Good thing is write down the command and start <TAB> very easy and funny ! 
+
+Create DB
+
+CREATE KEYSPACE DB1 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+
+List DBs
+
+DESCRIBE KEYSPACES
+
+Switch Database
+
+cqlsh> use db1;    
+cqlsh:db1> 
+
+Take a look indicater pls
+
+List Tables
+
+cqlsh:db1> DESCRIBE TABLES ;
+
+<empty>
+
+Create Table
+
+cqlsh:db1> CREATE TABLE table1 (departman text, adi text, soyadi text, primary key(departman,adi));
+
+Lets see what we did when create table
+
+Not: for compound partition key use like this Primary Key((ColumnName1,ColumnName2),ColumnName3...))
+
+cqlsh:db1> DESCRIBE TABLE table1;
+
+CREATE TABLE db1.table1 (
+    departman text,
+    adi text,
+    soyadi text,
+    PRIMARY KEY (departman, adi)
+) WITH CLUSTERING ORDER BY (adi ASC)
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '64', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND crc_check_chance = 1.0
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99PERCENTILE';
+
+Insert Value
+
+INSERT INTO table1 (departman , adi , soyadi ) VALUES ( 'IT','VAHRIC','MUHTARYAN' );
+
+Lets Get All From Table
+
+cqlsh:db1> select * from table1;
+
+ departman | adi    | soyadi
+-----------+--------+-----------
+        IT | VAHRIC | MUHTARYAN
+
+(1 rows)
+
+Another good option is using ttl for data.
+
+Usage is end of the INSERT put the next line..
+
+using ttl TimeInseconds;
+
+Then type EXPAND ON and execute select agai after add more data to DB
+deparman will be in red color
+
+cqlsh:db1> select * from table1;
+
+@ Row 1
+-----------+-----------
+ departman | IT
+ adi       | NATALIN
+ soyadi    | MUHTARYAN
+
+@ Row 2
+-----------+-----------
+ departman | IT
+ adi       | VAHRIC
+ soyadi    | MUHTARYAN
+
+@ Row 3
+-----------+-----------
+ departman | MUTFAK
+ adi       | AREN
+ soyadi    | MUHTARYAN
+
+(3 rows)
+
+Tokens
+
+cqlsh:db1> select token(departman) from table1;
+
+@ Row 1
+-------------------------+----------------------
+ system.token(departman) | -4619272991099127979
+
+@ Row 2
+-------------------------+----------------------
+ system.token(departman) | -4619272991099127979
+
+@ Row 3
+-------------------------+----------------------
+ system.token(departman) | 753861771774959336
+
+(3 rows)
+
+Filtering
+
+select * from table1 where departman='IT';
+
+Query above will work but buttom one will not 
+
+cqlsh:db1> select * from table1 where soyadi='MUHTARYAN';
+InvalidRequest: Error from server: code=2200 [Invalid query] message="Cannot execute this query as it might involve data filtering and thus may have unpredictable performance. If you want to execute this query despite the performance unpredictability, use ALLOW FILTERING"
+
+Alter DB
+
+ALTER TABLE table1 ADD yas int;
+
+Update
+
+UPDATE table1 SET yas = 39 where adi = 'VAHRIC' and departman = 'IT' ;
+
+Truncate
+
+TRUNCATE table1;
+
+Delete
+
+DELETE from table1 where adi = 'VAHRIC' and departman = 'IT';
+
+Drop Table
+
+drop table table1;
+
+Drop DB
+
+drop KEYSPACE db1;
+
+IMPORTANT 1
+
+Without indexing on the column, Cassandra can't filter that column unless it is a primary key. 
+
+cqlsh:db1> CREATE INDEX SOYADINDEX ON table1 (soyadi);
+
+cqlsh:db1> select * from table1 where soyadi = 'MUHTARYAN' ;
+
+@ Row 1
+-----------+-----------
+ departman | IT
+ adi       | VAHRIC
+ soyadi    | MUHTARYAN
+ yas       | null
+
+(1 rows)
+
+Delete INDEX
+
+DROP INDEX soyadindex ;
+
+
+IMPORTANT 2
+
+What Cassandra does not support
+
+There are following limitations in Cassandra query language (CQL).
+
+    CQL does not support aggregation queries like max, min, avg
+    CQL does not support group by, having queries.
+    CQL does not support joins.
+    CQL does not support OR queries.
+    CQL does not support wildcard queries.
+    CQL does not support Union, Intersection queries.
+    Table columns cannot be filtered without creating the index.
+    Greater than (>) and less than (<) query is only supported on clustering column.
+
+    Cassandra query language is not suitable for analytics purposes because it has so many limitations. 
+
+Links:
+
+https://dzone.com/articles/cassandra-data-modeling-primary-clustering-partiti
+https://www.guru99.com/cassandra-tutorial.html

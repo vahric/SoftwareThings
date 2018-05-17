@@ -1,0 +1,98 @@
+Node = data
+Datacenter = collection of nodes
+Cluster = collection of datacenters
+No any leader node
+Only cordination node is there and any node could act like that
+
+Replication Factor : How many copy of data (per database)
+Replicaiton Strategy : 
+	SimpleStrategy : if you have one datacenter , partitioner select first node and then data continue clockwise direction
+	NetworkTopologyStrategy : For more then two datacenters. First data places in one datacenter then switch next one. Its work well for rack aware design
+Consistency Level : How many node need to response OK when write happen.
+Background Read Repair : if replicas return out of date value then read repair process start to run
+
+Data Modeling
+
+Writes are not expensive, no join,no group by,no OR , no aggregations
+Maximize write , Maximize Data Duplicaiton
+Spread data to whole cluster
+Number of partition is important to get paralel performance
+Partitions are keys like primary keys but also data distributed by partitions
+Also we have another key is which called clustering columns.
+Clustering columns used for ordering data and if primary key do not have uniqueness then its come true
+Default its ASC, ig you want to change use WITH CLUSTERING ORDER BY (state_province DESC, city ASC, gym_name ASC) to change the behaviour
+For example, if we are talking about different employees each department could be partition key, different department create different partitions and cluster columns will be sorter.
+Partition keys translate to partition token values and this values used for write/read/compact data.
+Composite key, if need to create more partition PRIMARY KEY ((country_code, state_province, city), opening_date, gym_name) take it inside another bracket
+Queries also need to have all composite keys to make valid query
+
+https://shermandigital.com/blog/designing-a-cassandra-data-model/
+
+term denormalize/normalize : Because of NoSQL do not support join you have to duplicate data. Means instead of create two tables and join each other with NoSQL you have to put all
+			     columns again and again where you will need this data.
+
+
+Write Process 
+
+First stop for data is commitlog then memtable acknowledged to client.
+Commitlog only for crash recovery, when data written to SSTable, segments on commitlog deleted.
+SSTabled are never modified after they are created. 
+
+Read Process 
+
+
+    Row Cache --> its for only used read-intesive things, its compliatly cache the partition, its optional
+    Bloom Filter --> depend tuning , if its well tuned then no need to read many files 
+    Partition Key Cache --> Mostly accessed partition indexes. if key frequenly accessed then Partition Summary + Partition Index passed and directly  Compression Offset Map used for 
+				to access data. 
+    Partition Summary --> stores a mapping between a range of partition tokens into their position in the partition index.
+    Partition Index --> partition token and offset relation , its used in compression offset map
+    Compression Offset Map --> compressed block offset informatio , exact point of data on disk
+
+
+Keyspace=Database
+Column Family=Table
+Partition Key=Primary Key
+Column Name/Key=Column Name
+Column Value=Column Value
+
+To Create keyspace
+
+Create keyspace KeyspaceName with replicaton={'class':SimpleStrategy, 
+		'replication_factor': 3};
+
+To Alter keyspace
+
+StrategyName could change, replication_factor could change
+
+Alter Keyspace KeyspaceName with replication={'class':'StrategyName', 
+	'replication_factor': no of replications on different nodes} 
+    	with DURABLE_WRITES=true/false
+
+Durable write, default true, could change it false, means no commitlog write
+
+Drop keyspace KeyspaceName
+
+use <KeyspaceName>
+
+Create Column Family(Table)
+
+*interesting: Tables can be created, dropped, and altered at runtime without blocking updates and queries
+
+
+Deletion Data
+
+Deleted data marked tombstone and have an expire time , data is deleted part of compation
+
+Compaction
+
+Compaction is clean-up process, it merge SSTables resolving conflicts by timestamp and clean up marked datas for delete
+
+
+Links:
+
+
+https://www.hugopicado.com/2017/05/14/cassandra-the-tale-of-a-lonely-node.html
+https://www.guru99.com/cassandra-tutorial.html
+
+Example data model : https://docs.datastax.com/en/cql/3.1/cql/ddl/ddl_music_service_c.html

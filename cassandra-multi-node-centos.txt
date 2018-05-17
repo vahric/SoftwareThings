@@ -1,0 +1,5 @@
+Install each server like single node server but do not start it 
+
+we should configure some settings below , for configurations pls check file "cassandra-config-centos.txt"
+
+listen address
