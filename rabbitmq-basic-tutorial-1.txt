@@ -1,0 +1,72 @@
+Rabbitmq not like other distributed systems need a leader or slaves , all nodes are in a RabbitMQ cluster are equal peers, no any special nodes.
+
+All cli tools or http api calls could do any of cluster member.
+
+erlang-cookie is a way of auth nodes when join to rabbitmq cluster, to learn more https://www.rabbitmq.com/clustering.html#erlang-cookie 
+
+Clients always connect to one node in time
+With queue mirroring you can replicat queues to all nodes
+Also some of nodes can run as a non-mirrored queue node , which is accept all requet and redirect requests transparently to queue owner node
+
+Many node failure handling supported by Rabbitmq , its include wan too ! 
+https://www.rabbitmq.com/clustering.html#clustering-dealing-with-failure
+
+For metric and statitics rabbitmq have management plugin
+https://www.rabbitmq.com/clustering.html#clustering-and-stats
+
+When shutdown disc only rabbitmq nodes then next start they will start and sycn the lates info
+
+if stopping node is the latest one then start time nothing need to be sync
+
+When shutdown all cluster , last node which is stopped should be up first
+
+Sometime last cluster node couldn't be bring online then you should use forget_cluster_node with rabbitmqctl
+For example rabbitmqctl forget_cluster_node rabbit@<alivenode1>
+Also force_boot there but its another story
+
+To remove one of node from cluster
+
+[root@cassandra2 ~]# rabbitmqctl stop_app
+Stopping node rabbit@cassandra2 ...
+...done.
+[root@cassandra2 ~]# rabbitmqctl reset
+Resetting node rabbit@cassandra2 ...
+...done.
+[root@cassandra2 ~]# rabbitmqctl start_app
+Starting node rabbit@cassandra2 ...
+...done.
+
+There is no any cassandra2 node anymore
+
+For more https://www.rabbitmq.com/clustering.html#overview
+
+[root@cassandra1 ~]# rabbitmqctl cluster_status
+Cluster status of node rabbit@cassandra1 ...
+[{nodes,[{disc,[rabbit@cassandra1,rabbit@cassandra3]}]},
+ {running_nodes,[rabbit@cassandra3,rabbit@cassandra1]},
+ {cluster_name,<<"rabbit@cassandra3">>},
+ {partitions,[]}]
+...done.
+
+rabbtimq config file 
+
+/etc/rabbitmq/rabbitmq.config
+
+rabbirmq log files
+
+/var/log/rabbitmq/
+
+To enable guest user access from internet
+Default only guest user can access from localhost
+
+this is before config 
+
+   %% Uncomment the following line if you want to allow access to the
+   %% guest user from anywhere on the network.
+   %% {loopback_users, []},
+
+This is after config
+
+   %% Uncomment the following line if you want to allow access to the
+   %% guest user from anywhere on the network.
+   {loopback_users, []}

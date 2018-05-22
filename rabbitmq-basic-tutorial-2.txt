@@ -1,0 +1,47 @@
+
+RabbitMQ use erlang mnesia distributed database
+
+When network partitions happen you can see it like below 
+
+# rabbitmqctl cluster_status
+Cluster status of node rabbit@smacmullen ...
+[{nodes,[{disc,[hare@smacmullen,rabbit@smacmullen]}]},
+ {running_nodes,[rabbit@smacmullen,hare@smacmullen]},
+ {partitions,[{rabbit@smacmullen,[hare@smacmullen]},
+              {hare@smacmullen,[rabbit@smacmullen]}]}]
+...done.
+
+Good article from pivotal https://rabbitmq.docs.pivotal.io/37/rabbit-web-docs/partitions.html
+
+What is net_tick_timeout
+
+net_tick_timeout is kind a ping between nodes , you can understand node goes down like below  
+
+=INFO REPORT==== 23-Sep-2014::16:21:22 ===
+node rabbit@cordelia down: net_tick_timeout
+
+User management and permissons
+
+sudo rabbitmqctl add_vhost <name of vhost>
+sudo rabbitmqctl add_user <username> <password>
+sudo rabbitmqctl set_permissions -p <vhost> <username> '.*' '.*' '.*'
+Note: The end of the command ('.*' '.*' '.*')means, 'all configuration' 'all read' 'all write' permissions. The <username> gets full control over the vhost.
+
+Somewhere i saw rabbitmq started before clsutering like below , i did not use it 
+
+rabbitmq-server -detached
+
+Set Rabbitmq env variables for nodes 
+
+rabbitmq-env.conf
+
+Erlang epmd 
+erlang port mapper daemon
+
+Good Links
+
+https://www.cloudamqp.com/blog/2015-05-18-part1-rabbitmq-for-beginners-what-is-rabbitmq.html
+
+https://www.rabbitmq.com/clustering.html#overview
+
+HA : https://www.rabbitmq.com/ha.html

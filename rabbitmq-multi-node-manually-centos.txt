@@ -1,0 +1,213 @@
+This article cover manually join to cluster
+Looks like rabbitmq have perfect ways to handle it https://www.rabbitmq.com/clustering.html#cluster-formation-options
+
+Sure you have updated os
+
+yum update
+
+Disable Firewall and selinux
+
+systemctl stop firewalld
+systemctl disable firewalld
+
+setenforce 0
+
+Why we are disabling selinux and firewall 
+
+Port Access
+
+SELinux, and similar mechanisms may prevent RabbitMQ from binding to a port. When that happens, RabbitMQ will fail to start. Firewalls can prevent nodes and CLI tools from communicating with each other. Make sure the following ports can be opened:
+
+    4369: epmd, a peer discovery service used by RabbitMQ nodes and CLI tools
+    5672, 5671: used by AMQP 0-9-1 and 1.0 clients without and with TLS
+    25672: used for inter-node and CLI tools communication (Erlang distribution server port) and is allocated from a dynamic range (limited to a single port by default, computed as AMQP port + 20000). Unless external connections on these ports are really necessary (e.g. the cluster uses federation or CLI tools are used on machines outside the subnet), these ports should not be publicly exposed. See networking guide for details.
+    35672-35682: used by CLI tools (Erlang distribution client ports) for communication with nodes and is allocated from a dynamic range (computed as server distribution port + 10000 through server distribution port + 10010). See networking guide for details.
+    15672: HTTP API clients, management UI and rabbitmqadmin (only if the management plugin is enabled)
+    61613, 61614: STOMP clients without and with TLS (only if the STOMP plugin is enabled)
+    1883, 8883: (MQTT clients without and with TLS, if the MQTT plugin is enabled
+    15674: STOMP-over-WebSockets clients (only if the Web STOMP plugin is enabled)
+    15675: MQTT-over-WebSockets clients (only if the Web MQTT plugin is enabled)
+
+
+Set hostname if you did not !
+
+hostnamectl set-name cassandra1
+*do for each node
+
+Update hosts file
+Rabbitmq nodes should resolve each other, it should be via DNS(fqdn) or via hosts file
+
+10.111.60.130   cassandra1
+10.111.60.131   cassandra2
+10.111.60.132   cassandra3
+
+We will need EPEL , What is EPEL ? 
+
+https://fedoraproject.org/wiki/EPEL#What_is_Extra_Packages_for_Enterprise_Linux_.28or_EPEL.29.3F
+
+Install EPEL
+
+yum install epel-release -y
+
+No need erlang because Rabbtimq will install its dependency, Install Rabbitmq on each node
+
+yum install rabbitmq-server -y
+
+Check status for me nothing started yet
+
+[root@cassandra1 ~]# rabbitmqctl status
+Status of node rabbit@cassandra1 ...
+Error: unable to connect to node rabbit@cassandra1: nodedown
+
+DIAGNOSTICS
+===========
+
+attempted to contact: [rabbit@cassandra1]
+
+rabbit@cassandra1:
+  * connected to epmd (port 4369) on cassandra1
+  * epmd reports: node 'rabbit' not running at all
+                  no other nodes on cassandra1
+  * suggestion: start the node
+
+current node details:
+- node name: rabbitmqctl32414@cassandra1
+- home dir: /var/lib/rabbitmq
+- cookie hash: kSVqjiTy6zj5afb1M/pgBQ==
+
+Allow guest access to rabbtimq from anywhere and start/enable the service 
+
+systemctl restart rabbitmq-server
+systemctl enable rabbitmq-server
+
+Now rabbitmqctl status should show you something more ...
+
+To have a cluster somehow you will need authentication between nodes
+Here we will use erlang cookie 
+
+scp /var/lib/rabbitmq/.erlang.cookie root@cassandra2:/var/lib/rabbitmq/
+scp /var/lib/rabbitmq/.erlang.cookie root@cassandra3:/var/lib/rabbitmq/
+
+Important: pls care about owner of the files it should be rabbitmq otherwise rabbitmqctl status will not work you will see dump file there...
+chown rabbitmq:rabbitmq .erlang.cookie
+
+Need to join nodes together, stop the app on other nodes instead of first like below 
+
+[root@cassandra2 ~]# rabbitmqctl stop_app
+Stopping node rabbit@cassandra2 ...
+...done.
+
+[root@cassandra3 ~]# rabbitmqctl stop_app
+Stopping node rabbit@cassandra3 ...
+...done.
+
+Then start to join cluster
+
+[root@cassandra2 ~]# rabbitmqctl join_cluster rabbit@cassandra1
+Clustering node rabbit@cassandra2 with rabbit@cassandra1 ...
+...done.
+
+
+[root@cassandra3 ~]# rabbitmqctl join_cluster rabbit@cassandra1
+Clustering node rabbit@cassandra3 with rabbit@cassandra1 ...
+...done.
+
+Not : rabbitmq nodes could be ram and disk mode, when we join like before its disk mode , to allow it ram mode use --ram parameter.
+
+And start the rabbitmq now 
+
+[root@cassandra2 ~]# rabbitmqctl start_app
+Starting node rabbit@cassandra2 ...
+...done.
+
+[root@cassandra3 ~]# rabbitmqctl start_app
+Starting node rabbit@cassandra3 ...
+...done.
+
+Now , try to test status of cluster 
+
+[root@cassandra3 ~]# rabbitmqctl cluster_status
+Cluster status of node rabbit@cassandra3 ...
+[{nodes,[{disc,[rabbit@cassandra1,rabbit@cassandra2,rabbit@cassandra3]}]},
+ {running_nodes,[rabbit@cassandra2,rabbit@cassandra1,rabbit@cassandra3]},
+ {cluster_name,<<"rabbit@cassandra3">>},
+ {partitions,[]}]
+...done.
+
+To stop one of node 
+
+[root@cassandra2 ~]# rabbitmqctl stop
+Stopping and halting node rabbit@cassandra2 ...
+...done.
+
+[root@cassandra1 ~]# rabbitmqctl cluster_status
+Cluster status of node rabbit@cassandra1 ...
+[{nodes,[{disc,[rabbit@cassandra1,rabbit@cassandra2,rabbit@cassandra3]}]},
+ {running_nodes,[rabbit@cassandra3,rabbit@cassandra1]},
+ {cluster_name,<<"rabbit@cassandra3">>},
+ {partitions,[]}]
+...done.
+
+To start and join cluster again ...
+
+systemctl start rabbitmq-server
+
+What will be replicated now ! 
+
+Operation point of view everything but no any queues.
+Queues are accessable via each node but not replicated to replicate we will need configure ha for queues
+
+Go with simple one, lets replicate it to all nodes 
+
+for more: https://www.rabbitmq.com/ha.html
+
+rabbitmqctl set_policy ha-all "" '{"ha-mode":"all","ha-sync-mode":"automatic"}'
+
+Lets install GUI if its perfect for you 
+
+rabbitmq-plugins enable rabbitmq_management
+
+[root@cassandra1 ~]# rabbitmq-plugins enable rabbitmq_management
+The following plugins have been enabled:
+  mochiweb
+  webmachine
+  rabbitmq_web_dispatch
+  amqp_client
+  rabbitmq_management_agent
+  rabbitmq_management
+Plugin configuration has changed. Restart RabbitMQ for changes to take effect.
+
+Restart service on the node 
+
+systemctl restart rabbitmq-server
+
+To access webmanagement (guest/guest)
+http://10.111.60.130:15672/
+
+To list all 
+
+[root@cassandra1 ~]# rabbitmq-plugins list
+[e] amqp_client                       3.3.5
+[ ] cowboy                            0.5.0-rmq3.3.5-git4b93c2d
+[ ] eldap                             3.3.5-gite309de4
+[e] mochiweb                          2.7.0-rmq3.3.5-git680dba8
+[ ] rabbitmq_amqp1_0                  3.3.5
+[ ] rabbitmq_auth_backend_ldap        3.3.5
+[ ] rabbitmq_auth_mechanism_ssl       3.3.5
+[ ] rabbitmq_consistent_hash_exchange 3.3.5
+[ ] rabbitmq_federation               3.3.5
+[ ] rabbitmq_federation_management    3.3.5
+[E] rabbitmq_management               3.3.5
+[e] rabbitmq_management_agent         3.3.5
+[ ] rabbitmq_management_visualiser    3.3.5
+[ ] rabbitmq_mqtt                     3.3.5
+[ ] rabbitmq_shovel                   3.3.5
+[ ] rabbitmq_shovel_management        3.3.5
+[ ] rabbitmq_stomp                    3.3.5
+[ ] rabbitmq_test                     3.3.5
+[ ] rabbitmq_tracing                  3.3.5
+[e] rabbitmq_web_dispatch             3.3.5
+[ ] rabbitmq_web_stomp                3.3.5
+[ ] rabbitmq_web_stomp_examples       3.3.5
+[ ] sockjs                            0.3.4-rmq3.3.5-git3132eb9
+[e] webmachine                        1.10.3-rmq3.3.5-gite9359c7
