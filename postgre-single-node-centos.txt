@@ -1,0 +1,186 @@
+Postgre SQL is Relational Database Management System (RDMS)
+
+To install 9.2 
+(to install 9.5 move to "To Install 9.5" section) 
+I focused postgre because of vcloud demo :D 
+
+yum install postgresql-server postgresql-contrib -y
+
+Postgre looks like very interesting it has a initdb executable command which set
+
+1) Set DBs paths
+2) Set Locale
+3) Create postgre DB like mysql DB
+4) Create Template1 DB (Kind a template when you create a new DB)
+
+Also interesting you can not use this command as a root :D 
+
+mkdir /mnt/postgrelocation/
+chown -R postgres:postgres /mnt/postgrelocation/
+sudo -i -u postgres
+
+-bash-4.2$ initdb --locale=en_US.UTF-8 -D /mnt/postgrelocation
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+fixing permissions on existing directory /mnt/postgrelocation ... ok
+creating subdirectories ... ok
+selecting default max_connections ... 100
+selecting default shared_buffers ... 32MB
+creating configuration files ... ok
+creating template1 database in /mnt/postgrelocation/base/1 ... ok
+initializing pg_authid ... ok
+initializing dependencies ... ok
+creating system views ... ok
+loading system objects' descriptions ... ok
+creating collations ... ok
+creating conversions ... ok
+creating dictionaries ... ok
+setting privileges on built-in objects ... ok
+creating information schema ... ok
+loading PL/pgSQL server-side language ... ok
+vacuuming database template1 ... ok
+copying template1 to template0 ... ok
+copying template1 to postgres ... ok
+
+WARNING: enabling "trust" authentication for local connections
+You can change this by editing pg_hba.conf or using the option -A, or
+--auth-local and --auth-host, the next time you run initdb.
+
+Success. You can now start the database server using:
+
+    postgres -D /mnt/postgrelocation
+or
+    pg_ctl -D /mnt/postgrelocation -l logfile start
+
+To start postgresql use one of them
+
+Create a user 
+
+-bash-4.2$ createuser --interactive
+Enter name of role to add: vcloud
+Shall the new role be a superuser? (y/n) y
+
+Logon postgresql
+
+-bash-4.2$ psql
+psql (9.2.23)
+Type "help" for help.
+
+postgres=#;
+
+To List the roles
+
+ostgres=# \du
+                                   List of roles
+ Role name |                         Attributes                         | Member of 
+-----------+------------------------------------------------------------+-----------
+ postgres  | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
+ vcloud    | Superuser, Create role, Create DB                          | {}
+
+
+Create DB
+
+postgres=# create database vcloud owner vcloud;
+CREATE DATABASE
+
+Change/Add User pass
+
+postgres=# alter user vcloud password 'vcloudpass';
+ALTER ROLE
+
+postgres=# alter role vcloud with login;
+ALTER ROLE
+
+To install 9.5
+
+My installation on Centos 7 for others pls check other repose like rhel-6-x86_64,rhel-5-x86_64 ...
+yum install https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-7-x86_64/pgdg-centos95-9.5-2.noarch.rpm -y
+yum install postgresql95-server postgresql95 -y
+
+Init PGDATA
+
+like before here i used initdb right now we will use like below 
+
+/usr/pgsql-9.5/bin/postgresql95-setup initdb
+
+This command is one time command if you will need to re-run it delete /var/lib/pgsql/9.5/data/ folder ;)
+I made a mistake, execute it and stop it before :D 
+
+To start systemctl start postgresql-9.5
+To enable at the boot systemctl enable postgresql-9.5
+
+Change password of postgres
+
+\password postgres
+
+Port of postgre
+
+its 5432
+interesting if its used postgre choose +1 
+
+Config Files
+
+vi /var/lib/pgsql/9.5/data/postgresql.conf
+
+Modify Listening Port
+
+its default localhost 
+
+edit /var/lib/pgsql/9.5/data/postgresql.conf file
+listen_addresses = '*'          # what IP address(es) to listen on;
+
+Modify Who Can access
+
+vi /var/lib/pgsql/9.5/data/pg_hba.conf
+#Add the line below
+host    all             all             10.111.60.0/24          md5
+
+Other Commands
+
+dropdb
+dropuser
+
+About Roles
+
+postgres=# \h CREATE ROLE
+Command:     CREATE ROLE
+Description: define a new database role
+Syntax:
+CREATE ROLE name [ [ WITH ] option [ ... ] ]
+
+where option can be:
+
+      SUPERUSER | NOSUPERUSER
+    | CREATEDB | NOCREATEDB
+    | CREATEROLE | NOCREATEROLE
+    | CREATEUSER | NOCREATEUSER
+    | INHERIT | NOINHERIT
+    | LOGIN | NOLOGIN
+    | REPLICATION | NOREPLICATION
+    | BYPASSRLS | NOBYPASSRLS
+    | CONNECTION LIMIT connlimit
+    | [ ENCRYPTED | UNENCRYPTED ] PASSWORD 'password'
+    | VALID UNTIL 'timestamp'
+    | IN ROLE role_name [, ...]
+    | IN GROUP role_name [, ...]
+    | ROLE role_name [, ...]
+    | ADMIN role_name [, ...]
+    | USER role_name [, ...]
+    | SYSID uid
+
+to set CREATE ROLE demo_role WITH LOGIN;
+
+Links 
+
+https://www.postgresql.org/docs/9.1/static/manage-ag-templatedbs.html
+
+https://www.postgresql.org/docs/9.5/static/app-initdb.html
+
+https://www.digitalocean.com/community/tutorials/how-to-use-roles-and-manage-grant-permissions-in-postgresql-on-a-vps--2#how-to-create-roles-in-postgresql
+
+https://communities.vmware.com/thread/573753
