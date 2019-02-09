@@ -1,0 +1,60 @@
+Rule is "last transaction committed and should be chosen as the first node in the new cluster"
+Galera will keep track of the order in which nodes are being shut down The node that was shut down last will be marked as “Safe-to-Bootstrap” from. 
+
+When bootstrapping the new cluster, Galera will refuse to use as a first node a node that was marked as unsafe to bootstrap from. You will see the following message in the logs:
+
+
+It may not be safe to bootstrap the cluster from this node. It was not the last one to leave the cluster and may not contain all the updates.
+To force cluster bootstrap with this node, edit the grastate.dat file manually and set safe_to_bootstrap to 1 .
+
+Selecting the Right Node
+
+The procedure to select the right node to bootstrap from depends on how the cluster terminated: via an orderly shutdown or a crash.
+
+In case of an orderly shutdown, it is sufficient to follow the recommendations of the “Safe-to-Bootstrap” feature. Look for the node whose grastate.dat has safe_to_bootstrap: 1:
+
+
+# GALERA saved state
+version: 2.1
+uuid:    9acf4d34-acdb-11e6-bcc3-d3e36276629f
+seqno:   15
+safe_to_bootstrap: 1
+
+In case of a hard crash, all nodes will have safe_to_bootstrap: 0, so we will need to consult the InnoDB storage engine to determine which node has committed the last transaction in the cluster. This is achieved by starting mysqld with the --wsrep-recover variable, which produces an output like this:
+
+
+...
+2016-11-18 01:42:15 36311 [Note] InnoDB: Database was not shutdown normally!
+2016-11-18 01:42:15 36311 [Note] InnoDB: Starting crash recovery.
+...
+2016-11-18 01:42:16 36311 [Note] WSREP: Recovered position: 37bb872a-ad73-11e6-819f-f3b71d9c5ada:345628
+...
+2016-11-18 01:42:17 36311 [Note] /home/philips/git/mysql-wsrep-bugs-5.6/sql/mysqld: Shutdown complete
+
+The number after the UUID string on the "Recovered position" line is the one to watch. Pick the node that has the highest such number and edit its grastate.dat to set safe_to_bootstrap: 1:
+
+
+# GALERA saved state
+version: 2.1
+uuid:    37bb872a-ad73-11e6-819f-f3b71d9c5ada
+seqno:   -1
+safe_to_bootstrap: 1
+
+
+Check Everything is fine 
+
+If wsrep_local_state_comment, wsrep_ready, and wsrep_connected show the correct values, then that particular node is good.
+
+There's no Seconds_Behind_Master equivalent, because Galera is synchronous -- a healthy node can't be lagging, by definition and by design... a slow node slows down all the others, it doesn't lag behind them.
+
+
+
+Links : 
+
+http://galeracluster.com/2016/11/introducing-the-safe-to-bootstrap-feature-in-galera-cluster/
+https://www.slideshare.net/Severalnines/galera-node-recovery
+https://jira.mariadb.org/browse/MDEV-8223
+
+https://dba.stackexchange.com/questions/132769/how-to-verify-galera-is-synced
+http://galeracluster.com/documentation-webpages/monitoringthecluster.html#checking-the-replication-health
+https://dba.stackexchange.com/questions/157500/how-to-recover-mariadb-galera-cluster-after-full-crash

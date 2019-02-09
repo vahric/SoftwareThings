@@ -1,0 +1,85 @@
+Install NFS Server
+
+Install required packages ...
+
+yum install nfs-utils nfs-utils-lib -y
+yum install net-tools -y
+
+if you will use xfs check such packages are installed or not
+yum install xfsprogs
+
+Activate for startup
+
+systemctl start nfs
+systemctl enable nfs
+
+For NFSv2 and NFSv3 we will need rpcbind and nfs-lock, actually when you start nfs they should start together
+
+You can check it like below 
+
+systemctl status rpcbind
+systemctl status nfs-lock
+
+
+Export something via NFS
+
+vi /etc/exports
+
+/path_on_server           10.10.0.0/24(rw,sync,no_root_squash,no_subtree_check)
+
+Explanation : 
+
+rw : read/write
+sync: you are sure that data is written
+no_subtree_check : if whole volume exported use like this
+no_root_squash : if shared file need to be onwned by root otherwise remote root user will saved as nobody
+
+
+After each update of exports file execute command below 
+
+exportfs -a
+
+On Client Site
+
+mount -t nfs ip_of_nfs_server:/path/exported/onfsserver/ /path/on/localhost 
+
+On Client Site fstab
+
+ip_of_nfs_server:/path/exported/onfsserver/  /client/mount/point   nfs      auto,noatime,nolock,bg,nfsvers=3,intr,tcp,actimeo=1800 0 0
+ip_of_nfs_server:/path/exported/onfsserver/  /client/mount/point   nfs      rsize=8192,wsize=8192,timeo=14,intr
+
+Mount Options : https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-nfs-client-config-options.html
+
+Other Informations : 
+
+Net-Tools
+
+netstat -i
+
+NFS Stat
+
+nfsstat -m
+*You can see the NFS version
+
+NFS Config Path 
+
+/etc/sysconfig/nfs
+
+Disable NFSv2 and NFSv3 for NFSv4 only (Not required just for information, idea)
+
+Replace the related line with below
+
+RPCNFSDARGS="-N 2 -N 3 -U"
+
+Disable Other Services which will be not needed anymore for nfs
+
+systemctl mask --now rpc-statd.service rpcbind.service rpcbind.socket
+
+And need to restart nfs
+
+systemctl restart nfs
+
+NFS Tuning1 : https://www.slashroot.in/how-do-linux-nfs-performance-tuning-and-optimization
+Diff systemctl mask and disable https://askubuntu.com/questions/816285/what-is-the-difference-between-systemctl-mask-and-systemctl-disable
+About NFS : https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/storage_administration_guide/ch-nfs
+Configure NFS Server : https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/storage_administration_guide/nfs-serverconfig#nfs4-only

@@ -1,0 +1,5 @@
+
+
+To install maxscale
+
+yum -y install maxscale

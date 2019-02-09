@@ -1,0 +1,75 @@
+What is Ambari
+
+The Apache Ambari project is aimed at making Hadoop management simpler by developing software for provisioning, managing, and monitoring Apache Hadoop clusters. Ambari provides an intuitive, easy-to-use Hadoop management web UI backed by its RESTful APIs.
+
+To Install from source fallow this link https://cwiki.apache.org/confluence/display/AMBARI/Installation+Guide+for+Ambari+2.7.1
+
+To Install Ambari On Centos 7
+
+Before
+-Disable iptables
+-Disable selinux
+-Check you have python
+
+install wget if you do not have it ! 
+
+yum install wget -y
+
+Add Ambari Repo 
+
+wget -nv http://public-repo-1.hortonworks.com/ambari/centos7/2.x/updates/2.7.0.0/ambari.repo -O /etc/yum.repos.d/ambari.repo
+
+Update Repos and All Centos Pacakges
+
+yum repolist # Check it for its added
+yum update -y
+
+Install and Configure Ambari
+# It will also install postgre for interal use.
+
+yum install ambari-server -y
+
+# Before start setup Ambari Server
+
+ambari-server setup
+
+-Default ambari will run under root user to change it you should answer the question below yes , myseld no needed go with root (say no)
+"Customize user account for ambari-server daemon" say yes 
+
+-[1] Oracle JDK 1.8 + Java Cryptography Extension (JCE) Policy Files 8
+
+-Enable Ambari Server to download and install GPL Licensed LZO packages (y)
+
+-Enter advanced database configuration [y/n] (n)? n
+
+then it will start initdb for postgre , create tables , install jdk , install ambari to run, wait for until "Ambari Server 'setup' completed successfully"
+
+# Start Ambari Server
+
+[root@ambari ~]# ambari-server start
+Using python  /usr/bin/python
+Starting ambari-server
+Ambari Server running with administrator privileges.
+Organizing resource files at /var/lib/ambari-server/resources...
+Ambari database consistency check started...
+Server PID at: /var/run/ambari-server/ambari-server.pid
+Server out at: /var/log/ambari-server/ambari-server.out
+Server log at: /var/log/ambari-server/ambari-server.log
+Waiting for server start............................................................................
+Server started listening on 8080
+
+DB configs consistency check: no errors and warnings were found.
+Ambari Server 'start' completed successfully.
+
+Check via http://ambari.dorukcloud.com:8080
+
+Default Credentials : 
+-For Postgre --> ambari/bigdata
+-For UI --> admin/admin
+
+Links : 
+What is Ambari https://ambari.apache.org/
+Install Ambari : https://docs.hortonworks.com/HDPDocuments/Ambari-2.6.0.0/bk_ambari-installation/content/ch_Installing_Ambari.html
+Install Ambari : https://www.linuxhelp.com/how-to-install-ambari-server-on-centos-7/
+Install Cluster : https://docs.hortonworks.com/HDPDocuments/Ambari-2.7.0.0/bk_ambari-installation/content/ch_Deploy_and_Configure_a_HDP_Cluster.html
+For manuel installation examples : https://www.linode.com/docs/databases/hadoop/how-to-install-and-set-up-hadoop-cluster/

@@ -1,0 +1,83 @@
+First rule, disable selinux and firewall
+
+Set proper hostname to each node like mariadb1,mariadb2,mariadb3
+
+Add/Configure proper repo to install MariDB
+
+curl -sS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash
+
+Install MariaDB on three nodes together
+
+yum -y install MariaDB-server
+
+Now time to configure settings and up first node !
+Before do this need to understand config file and some variables we will set 
+
+Config File : /etc/my.cnf.d/server.cnf
+
+Pls uncomment variables or add variables what we need 
+in order; galera replication activated,related provider is used,we know all nodes(dynamicly can change),name of cluster,log format should be always safe
+because of that its row,good thing no need special database engine InnoDB is fine,and fastest and scalable lock mode with work row binlog format.
+
+[galera]
+# Mandatory settings
+wsrep_on=ON
+wsrep_provider=/usr/lib64/galera/libgalera_smm.so
+wsrep_cluster_address=gcomm://10.111.60.72,10.111.60.73,10.111.60.74
+wsrep_cluster_name=bigbigjapancluster
+binlog_format=row
+default_storage_engine=InnoDB
+innodb_autoinc_lock_mode=2
+
+Not: You can also set 
+
+wsrep_node_name, default it will take hostname of node, parameter is wsrep_node_name=
+wsrep_sst_method, default is rsync but you can change this to mysqldump if you want 
+wsrep_sst_auth, username/password for replciation
+wsrep_node_address, if you want to set ip address
+
+To other mysql nodes should be not started, execute script which will run MariaDB with --wsrep-new-cluster
+
+galera_new_cluster
+
+ps -fe | grep mysqld
+
+mysql    16629     1  9 22:36 ?        00:00:00 /usr/sbin/mysqld --wsrep-new-cluster --wsrep_start_position=00000000-0000-0000-0000-000000000000:-1
+
+Check cluster size 
+
+[root@mariadb1 ~]# mysql -u root -e "show global status like 'wsrep_cluster_size'"
++--------------------+-------+
+| Variable_name      | Value |
++--------------------+-------+
+| wsrep_cluster_size | 1     |
++--------------------+-------+
+
+Then switch others ...
+
+Other nodes are not needed to bootstrap, start like how you start service of mysql
+Before start mariadb, don't forget configure /etc/my.cnf.d/server.cnf
+
+systemctl start mariadb
+
+Lets check number of node joined ...
+
+[root@mariadb1 ~]# mysql -u root -e "show global status like 'wsrep_cluster_size'"
++--------------------+-------+
+| Variable_name      | Value |
++--------------------+-------+
+| wsrep_cluster_size | 3     |
++--------------------+-------+
+
+
+Links : 
+
+https://mariadb.com/kb/en/library/galera-cluster-system-variables/
+https://www.percona.com/blog/2017/07/26/what-is-innodb_autoinc_lock_mode-and-why-should-i-care/
+
+What is : 
+
+Galera Cluster - synchronous multi-master database cluster , base on Mysql/MariaDB + Galera Replication API
+wsrep - write-set replication api
+GTID - Gloval Transaction ID , its unique for each transaction not only single server across whole servers
+4567 - Galera Replication Traffic Port

@@ -1,0 +1,109 @@
+Basicly Spark is written in scala, its designed for batch and real time data processing.
+It can be run standalone mode also other cluster manages can host the executers which are YARN, Mesos, K8s.
+We should now what is spark driver , its kind a program , declare transformation and action on RDD (Reliable Distributed Dataset) and submit
+the request to master. its created environment called SparkContext which connected to Spark Master.
+
+Master node, Lord Vader ...
+
+Worker node, its a slave , job is execute something and get back with result.
+Spark process run in JVM.
+
+To install Spark
+
+We have VM with 4vcpu 8gb ram and 100GB disk 
+
+In this article i will not install multiple nodes as a worker, generally for this purpose we need master should login
+slave without password, but this article no needed
+
+In this article there is no HA for master role
+
+Install default jdk
+sudo apt-get install default-jdk -y
+
+Check Python 3 is installed/available or not (Optional)
+Check Scale is installed/available or not (Optional)
+
+Download Link : https://spark.apache.org/downloads.html 
+
+Ready to use link with wget wihtout hadoop
+wget https://archive.apache.org/dist/spark/spark-2.3.1/spark-2.3.1-bin-without-hadoop.tgz
+
+Ready to use link with wget with hadoop
+wget https://archive.apache.org/dist/spark/spark-2.3.1/spark-2.3.1-bin-hadoop2.7.tgz
+
+Unzip/Untar
+tar -zxvf spark-2.3.1-bin-hadoop2.7.tgz
+
+***Run Quick 
+
+cd spark-2.3.1-bin-hadoop2.7/
+cd bin
+./spark-shell
+
+Spark session available as 'spark'.
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /___/ .__/\_,_/_/ /_/\_\   version 2.3.1
+      /_/
+         
+Using Scala version 2.11.8 (OpenJDK 64-Bit Server VM, Java 1.8.0_171)
+Type in expressions to have them evaluated.
+Type :help for more information.
+
+scala>
+
+
+***More Deeply
+
+sudo mkdir /usr/local/spark
+sudo ln -s /usr/local/spark/spark-2.3.1-bin-hadoop2.7/ /usr/local/spark231
+
+Edit environment file for set global variable
+sudo vi /etc/environment
+SPARK_HOME="/usr/local/spark231"
+
+Start Master Node : 
+
+$SPARK_HOME/sbin/start-master.sh
+
+To access status screen 
+
+http://10.111.63.161:8080
+
+Start Slave Node :
+
+$SPARK_HOME/sbin/start-slave.sh spark://sparktest2:7077
+
+Now you can see that you have a one worker ...
+
+Connect Shell
+
+$SPARK_HOME/bin/spark-shell
+
+To Stop Slave
+
+$SPARK_HOME/sbin/stop-slave.sh
+
+State will be DEAD
+
+To Stop Master
+
+$SPARK_HOME/sbin/stop-master.sh
+
+
+
+What is More :
+
+ETL : Extract, Transform , Load
+https://www.webopedia.com/TERM/E/ETL.html
+
+Status Screen Port : 8080
+Master Listen Port : 7077
+
+Links: 
+
+What is Spark https://www.youtube.com/watch?v=SxAxAhn-BDU
+https://www.dezyre.com/apache-spark-tutorial/apache-spark-installation-tutorial
+https://mvnrepository.com

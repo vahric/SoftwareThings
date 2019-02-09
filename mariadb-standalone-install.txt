@@ -1,0 +1,19 @@
+To install MariaDB
+
+yum -y install mariadb-server
+
+To Enable at startup and start it
+
+systemctl start mariadb
+
+systemctl status mariadb # Check its really working
+
+systemctl enable mariadb # Enable it for startup next ...
+
+Secure it
+
+mysql_secure_installation
+
+Check it working 
+
+mysqladmin -u root version # I did not set any password for it

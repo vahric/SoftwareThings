@@ -1,0 +1,40 @@
+
+Install Fluentd : curl -L https://toolbelt.treasuredata.com/sh/install-redhat-td-agent3.sh | sh
+
+Fluentd Module Install : td-agent-gem install fluent-plugin-webhdfs
+
+Conf File : /etc/td-agent/td-agent.conf
+
+Example Conf : 
+
+<source>
+  @type http
+  port 9999
+</source>
+
+<match hdfs.*.*>
+  @type webhdfs
+  host ambaricontrol1.dorukcloud.com
+  port 50070
+  path "/vahric/log/%Y%m%d_%H/access.log.#{Socket.gethostname}"
+  username hdfs
+  <buffer>
+    flush_interval 10s
+  </buffer>
+</match>
+
+Log File : tail -f /var/log/td-agent/td-agent.log
+
+Test : 
+
+curl -X POST -d 'json={"action":"login","user":2}' \
+  http://localhost:8888/hdfs.access.test
+
+To Flush --> kill -USR1 `cat /var/run/td-agent/td-agent.pid`
+
+Restart Service : systemctl restart td-agent.service
+
+Links : 
+
+https://docs.fluentd.org/v1.0/articles/http-to-hdfs
+https://github.com/fluent/fluent-plugin-webhdfs

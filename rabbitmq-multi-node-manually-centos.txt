@@ -211,3 +211,16 @@ To list all
 [ ] rabbitmq_web_stomp_examples       3.3.5
 [ ] sockjs                            0.3.4-rmq3.3.5-git3132eb9
 [e] webmachine                        1.10.3-rmq3.3.5-gite9359c7
+
+
+To Create User 
+
+rabbitmqctl add_user admini password_for_admini
+
+To Assign Role to User
+
+rabbitmqctl set_user_tags admini administrator
+
+To Set Permissons
+
+rabbitmqctl set_permissions -p / admini ".*" ".*" ".*"
