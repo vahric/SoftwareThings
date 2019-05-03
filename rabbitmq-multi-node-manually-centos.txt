@@ -181,7 +181,7 @@ Restart service on the node
 
 systemctl restart rabbitmq-server
 
-To access webmanagement (guest/guest)
+To access webmanagement and default username and pass are (guest/guest)
 http://10.111.60.130:15672/
 
 To list all 
@@ -224,3 +224,7 @@ rabbitmqctl set_user_tags admini administrator
 To Set Permissons
 
 rabbitmqctl set_permissions -p / admini ".*" ".*" ".*"
+
+Dont forget to delete guest 
+
+rabbitmqctl delete_user guest
