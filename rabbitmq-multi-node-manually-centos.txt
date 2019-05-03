@@ -31,7 +31,7 @@ SELinux, and similar mechanisms may prevent RabbitMQ from binding to a port. Whe
 
 Set hostname if you did not !
 
-hostnamectl set-name cassandra1
+hostnamectl set-hostname cassandra1
 *do for each node
 
 Update hosts file
