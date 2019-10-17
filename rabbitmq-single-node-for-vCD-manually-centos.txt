@@ -1,0 +1,155 @@
+We will install single node RabbitMQ for vCloud Director to use CSE or some other stuff
+
+Sure you have updated os
+
+yum update
+
+Disable Firewall and selinux
+
+systemctl stop firewalld
+systemctl disable firewalld
+
+setenforce 0
+
+Also disable from selinux conf file too ! 
+
+Why we are disabling selinux and firewall
+Actually this is for cluster ....
+Port Access
+
+SELinux, and similar mechanisms may prevent RabbitMQ from binding to a port. When that happens, RabbitMQ will fail to start. Firewalls can prevent nodes and CLI tools from communicating with each other. Make sure the following ports can be opened:
+
+    4369: epmd, a peer discovery service used by RabbitMQ nodes and CLI tools
+    5672, 5671: used by AMQP 0-9-1 and 1.0 clients without and with TLS
+    25672: used for inter-node and CLI tools communication (Erlang distribution server port) and is allocated from a dynamic range (limited to a single port by default, computed as AMQP port + 20000). Unless external connections on these ports are really necessary (e.g. the cluster uses federation or CLI tools are used on machines outside the subnet), these ports should not be publicly exposed. See networking guide for details.
+    35672-35682: used by CLI tools (Erlang distribution client ports) for communication with nodes and is allocated from a dynamic range (computed as server distribution port + 10000 through server distribution port + 10010). See networking guide for details.
+    15672: HTTP API clients, management UI and rabbitmqadmin (only if the management plugin is enabled)
+    61613, 61614: STOMP clients without and with TLS (only if the STOMP plugin is enabled)
+    1883, 8883: (MQTT clients without and with TLS, if the MQTT plugin is enabled
+    15674: STOMP-over-WebSockets clients (only if the Web STOMP plugin is enabled)
+    15675: MQTT-over-WebSockets clients (only if the Web MQTT plugin is enabled)
+
+
+Set hostname if you did not !
+
+hostnamectl set-hostname <name>
+
+We will need EPEL , What is EPEL ?
+
+https://fedoraproject.org/wiki/EPEL#What_is_Extra_Packages_for_Enterprise_Linux_.28or_EPEL.29.3F
+
+Install EPEL
+
+yum install epel-release -y
+
+No need erlang because Rabbtimq will install its dependency, Install Rabbitmq on each node
+
+yum install rabbitmq-server -y
+
+Check status for me nothing started yet
+[root@vcdrabbitmq ~]# rabbitmqctl status
+Status of node rabbit@vcdrabbitmq ...
+Error: unable to connect to node rabbit@vcdrabbitmq: nodedown
+
+DIAGNOSTICS
+===========
+
+attempted to contact: [rabbit@vcdrabbitmq]
+
+rabbit@vcdrabbitmq:
+  * connected to epmd (port 4369) on vcdrabbitmq
+  * epmd reports: node 'rabbit' not running at all
+                  no other nodes on vcdrabbitmq
+  * suggestion: start the node
+
+current node details:
+- node name: rabbitmqctl1823@vcdrabbitmq
+- home dir: /var/lib/rabbitmq
+- cookie hash: opXouxGdLRoJG0uP9CEQiA==
+
+Run RabbitMQ and enable servers for next time 
+
+systemctl restart rabbitmq-server
+systemctl enable rabbitmq-server
+
+Check status again for running or not ! 
+
+rabbitmqctl status
+Status of node rabbit@vcdrabbitmq ...
+[{pid,8477},
+ {running_applications,[{rabbit,"RabbitMQ","3.3.5"},
+                        {os_mon,"CPO  CXC 138 46","2.2.14"},
+                        {mnesia,"MNESIA  CXC 138 12","4.11"},
+                        {xmerl,"XML parser","1.3.6"},
+                        {sasl,"SASL  CXC 138 11","2.3.4"},
+                        {stdlib,"ERTS  CXC 138 10","1.19.4"},
+                        {kernel,"ERTS  CXC 138 10","2.16.4"}]},
+ {os,{unix,linux}},
+ {erlang_version,"Erlang R16B03-1 (erts-5.10.4) [source] [64-bit] [smp:2:2] [async-threads:30] [hipe] [kernel-poll:true]\n"},
+ {memory,[{total,35929608},
+          {connection_procs,2800},
+          {queue_procs,5600},
+          {plugins,0},
+          {other_proc,13667200},
+          {mnesia,60336},
+          {mgmt_db,0},
+          {msg_index,22616},
+          {other_ets,762432},
+          {binary,17288},
+          {code,16707114},
+          {atom,602729},
+          {other_system,4081493}]},
+ {alarms,[]},
+ {listeners,[{clustering,25672,"::"},{amqp,5672,"::"}]},
+ {vm_memory_high_watermark,0.4},
+ {vm_memory_limit,770972057},
+ {disk_free_limit,50000000},
+ {disk_free,52109357056},
+ {file_descriptors,[{total_limit,924},
+                    {total_used,3},
+                    {sockets_limit,829},
+                    {sockets_used,1}]},
+ {processes,[{limit,1048576},{used,125}]},
+ {run_queue,0},
+ {uptime,34}]
+...done.
+
+Activate GUI for Management and Monitor
+
+rabbitmq-plugins enable rabbitmq_management
+
+Then restart because of related service run ...
+
+systemctl restart rabbitmq-server
+
+To access webmanagement and default username and pass are (guest/guest)
+http://<ip>:15672/
+
+To see what other plugins are installed or installable execute command below
+
+rabbitmq-plugins list
+
+To Create User
+
+rabbitmqctl add_user vcdrabbit password_for_admini
+Creating user "vcdrabbit" ...
+...done.
+
+To Assign Role to User
+
+rabbitmqctl set_user_tags vcdrabbit administrator
+Setting tags for user "vcdrabbit" to [administrator] ...
+...done.
+
+To Set Permissons
+
+rabbitmqctl set_permissions -p / vcdrabbit ".*" ".*" ".*"
+Setting permissions for user "vcdrabbit" in vhost "/" ...
+...done.
+
+Dont forget to delete guest
+
+rabbitmqctl delete_user guest
+
+Command Referance
+https://www.rabbitmq.com/rabbitmqctl.8.html
