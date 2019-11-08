@@ -1,0 +1,147 @@
+Check /etc/hosts file FQDN,name and ip address
+
+cat /etc/host
+
+10.110.69.1	keystone.dorukcloud.com keystone
+
+This is POC installation and disable firewalld and not enable it to run next time ...
+
+systemctl disable firewalld;systemctl stop firewalld
+
+Also disable SELINUX to run Apache with wsgi without any issue ...
+
+vi /etc/selinux/config
+SELINUX=disable
+
+Not: Reboot the server
+
+Still Openstack networking do not work with Network Manager
+
+systemctl disable NetworkManager;systemctl stop NetworkManager
+
+Install NTP,start NTP,Control ntpd
+
+yum -y install ntp
+systemctl restart ntpd;systemctl enable ntpd
+ntpq -p
+
+Activate Openstack Train Repo
+
+yum install centos-release-openstack-train -y
+yum repolist
+
+Install Openstack Client
+
+yum install python-openstackclient -y
+
+Install MariaDB and Python Client
+
+yum install mariadb mariadb-server python2-PyMySQL -y
+
+cat <<EOF > /etc/my.cnf.d/openstack.cnf
+[mysqld]
+bind-address = <ip_address_of_node>
+default-storage-engine = innodb
+innodb_file_per_table
+collation-server = utf8_general_ci
+character-set-server = utf8
+EOF
+
+Activate,Start and Secure MariaDB
+
+systemctl enable mariadb;systemctl start mariadb
+mysql_secure_installation
+
+
+Install,Activate,Run,Create User,Assign Role RabbitMQ
+
+yum install rabbitmq-server -y
+systemctl enable rabbitmq-server;systemctl start rabbitmq-server
+rabbitmqctl add_user openstack <password>
+rabbitmqctl set_permissions openstack ".*" ".*" ".*"
+
+Install Memcached
+
+yum install memcached python-memcached -y
+
+Modify Memcached Config
+
+cat /etc/sysconfig/memcached 
+
+PORT="11211"
+USER="memcached"
+MAXCONN="1024"
+CACHESIZE="64"
+OPTIONS="-l 127.0.0.1,::1,<hostname>"
+
+Start Memcached
+
+systemctl enable memcached.service;systemctl start memcached.service
+
+Create Keystone DB
+
+>mysql -u root -p
+
+CREATE DATABASE keystone;
+GRANT ALL PRIVILEGES ON keystone.* TO 'keystone'@'localhost' IDENTIFIED BY '<password>';
+GRANT ALL PRIVILEGES ON keystone.* TO 'keystone'@'%' IDENTIFIED BY '<password>';
+
+Install Keystone, Apache, mod_wsgi and other openstack utils
+
+yum install openstack-keystone openstack-utils httpd mod_wsgi -y
+
+Configure Environment Variables
+
+vi /etc/environment
+
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
+
+Not: Logout and Login again ...
+
+Configure share secret to bootstrap keystone, set db , auth provider and create keystone db structure ...
+
+openstack-config --set /etc/keystone/keystone.conf DEFAULT admin_token b6648ecb74bbcb5d388d
+openstack-config --set /etc/keystone/keystone.conf database connection mysql+pymysql://keystone:<password>@oscontroller/keystone
+openstack-config --set /etc/keystone/keystone.conf token provider fernet
+
+About fortnet https://docs.openstack.org/keystone/pike/admin/identity-fernet-token-faq.html 
+
+su -s /bin/sh -c "keystone-manage db_sync" 
+
+keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
+keystone-manage credential_setup --keystone-user keystone --keystone-group keystone
+
+keystone-manage bootstrap --bootstrap-password <password> --bootstrap-admin-url http://10.110.220.1:5000/v3/ --bootstrap-internal-url http://10.110.220.1:5000/v3/ --bootstrap-public-url http://10.110.220.1:5000/v3/ --bootstrap-region-id RegionOne --bootstrap-username admin --bootstrap-project-name admin --bootstrap-role-name admin --bootstrap-service-name keystone
+
+
+Not : Default Domain "default" is already created with this command.
+*keystone-manager https://docs.openstack.org/keystone/ocata/man/keystone-manage.html (out of API things export import)
+
+Configure Apache
+
+vi /etc/httpd/conf/httpd.conf
+ServerName <hostname>
+
+ln -s /usr/share/keystone/wsgi-keystone.conf /etc/httpd/conf.d/
+
+systemctl enable httpd.service;systemctl start httpd.service
+
+Create keystonerc_admin file and Export related values 
+
+export OS_PROJECT_DOMAIN_NAME=default
+export OS_USER_DOMAIN_NAME=default
+export OS_USERNAME=admin
+export OS_PROJECT_NAME=admin
+export OS_PASSWORD=<password>
+export OS_AUTH_URL=http://10.110.220.1:5000/v3
+export OS_IDENTITY_API_VERSION=3
+export PS1='[\u@\h \W(keystone_admin)]\$ '
+
+
+Some Links : 
+
+https://www.mirantis.com/blog/mirantis-training-blog-openstack-keystone-domains/
+https://www.golinuxcloud.com/steps-to-install-and-configure-controller-node-in-openstack/
+https://access.redhat.com/documentation/en-us/red_hat_openstack_platform/10/pdf/manual_installation_procedures/Red_Hat_OpenStack_Platform-10-Manual_Installation_Procedures-en-US.pdf
+https://computingforgeeks.com/installation-of-openstack-three-node-cluster-centos-7/
