@@ -1,0 +1,163 @@
+
+Set root password and active root login (optional)
+
+Update all packages ...
+
+apt-get update -y;apt-get upgrade -y;apt-get dist-upgrade -y
+
+Reboot the servers
+
+reboot
+
+Check and Update /etc/hosts file FQDN,name and ip addresses
+  
+cat /etc/host
+
+127.0.0.1 localhost
+10.110.220.110     ubind.dorukcloud.com ubind
+10.110.220.111	   ucontroller.dorukcloud.com ucontroller
+10.100.220.112	   udashboard.dorukcloud.com udashboard
+
+This is POC installation and disable firewalld and not enable it to run next time ...
+
+Not like Centos ufw disabled default, no need to do extra things (ufw disable/ufw activate)	
+
+Also disable SELINUX to run Apache with wsgi without any issue ...
+
+Not like Centos selinux not installed default, go !
+
+Still Openstack networking do not work with Network Manager
+
+Not like Centos, nothing to do 
+
+Install and Configure Time Server Things
+
+apt install chrony -y
+
+Check Activity
+root@ubind:~# chronyc activity
+200 OK
+8 sources online
+0 sources offline
+4 sources doing burst (return to online)
+0 sources doing burst (return to offline)
+0 sources with unknown address
+
+Activate Openstack Train Repo
+
+add-apt-repository cloud-archive:train
+*https://wiki.ubuntu.com/OpenStack/CloudArchive#Train
+
+Install Openstack Client
+
+apt-get install -y python-openstackclient
+
+*** On Controller Node Only*** Install MariaDB and Python Client
+
+apt-get install -y mariadb-server python-pymysql
+
+cat <<EOF > /etc/mysql/mariadb.conf.d/99-openstack.cnf
+[mysqld]
+bind-address = <ip_address_of_node>
+default-storage-engine = innodb
+innodb_file_per_table = on
+collation-server = utf8_general_ci
+character-set-server = utf8
+EOF
+
+Secure MariaDB
+
+mysql_secure_installation
+
+*** On Controller Node Only*** Install,Activate,Run,Create User,Assign Role RabbitMQ
+
+apt-get install rabbitmq-server -y
+rabbitmqctl add_user openstack <password>
+rabbitmqctl set_permissions openstack ".*" ".*" ".*"
+
+*** On Controller Node Only*** Install Memcached
+
+apt-get install memcached python-memcache -y
+Modify conf like below ...
+
+cat /etc/memcached.conf
+
+-l <ipofcontroller>
+
+*****Bypassed etcd no need for my installation
+
+*** On Controller Node Only*** Install Keystone
+
+mysql -u root -p
+
+CREATE DATABASE keystone;
+GRANT ALL PRIVILEGES ON keystone.* TO 'keystone'@'localhost' IDENTIFIED BY '<password>';
+GRANT ALL PRIVILEGES ON keystone.* TO 'keystone'@'%' IDENTIFIED BY '<password>';
+
+Install Keystone, Apache, mod_wsgi and other openstack utils
+
+apt-get install keystone -y
+*it will install all no need to specify apache2 or others....
+
+Configure Environment Variables
+
+vi /etc/environment
+
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
+
+Not: Logout and Login again ...
+
+Configure share secret to bootstrap keystone, set db , auth provider and create keystone db structure ...
+
+vi /etc/keystone/keystone.conf
+
+[database]
+connection = mysql+pymysql://keystone:<password>@<hostname_or_ip>/keystone
+
+[token]
+
+provider = fernet
+
+Create DB Structure 
+
+su -s /bin/sh -c "keystone-manage db_sync"
+*Control DB for tables created or not ! 
+
+keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
+keystone-manage credential_setup --keystone-user keystone --keystone-group keystone
+
+*About Fernet
+https://www.slideshare.net/priti_desai/deep-dive-into-keystone-tokens-and-lessons-learned
+https://docs.openstack.org/keystone/pike/admin/identity-fernet-token-faq.html
+
+Lets Bootstrap the identity service 
+
+keystone-manage bootstrap --bootstrap-password <password> --bootstrap-admin-url http://<ip_hostname>:5000/v3/ --bootstrap-internal-url http://<ip_hostname>:5000/v3/ --bootstrap-public-url http://<ip_hostname>:5000/v3/ --bootstrap-region-id RegionOne --bootstrap-username admin --bootstrap-project-name admin --bootstrap-role-name admin --bootstrap-service-name keystone
+
+Modify apache2.conf
+
+vi /etc/apache2/apache2.conf
+
+# Global configuration
+#
+ServerName ucontroller
+
+Not: Maybe it not available, pls put it under Global configuration section ...
+
+service apache2 restart
+
+Create keystonerc_admin file and Export related values
+
+export OS_PROJECT_DOMAIN_NAME=default
+export OS_USER_DOMAIN_NAME=default
+export OS_USERNAME=admin
+export OS_PROJECT_NAME=admin
+export OS_PASSWORD=<password>
+export OS_AUTH_URL=http://<ip>:5000/v3
+export OS_IDENTITY_API_VERSION=3
+export PS1='[\u@\h \W(keystone_admin)]\$ '
+
+Links : 
+
+https://ubuntu.com/blog/ubuntu-bionic-using-chrony-to-configure-ntp

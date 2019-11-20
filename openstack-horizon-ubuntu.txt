@@ -1,0 +1,55 @@
+Designate is Openstack DNS-as-a-Service solution (multi-tenant)
+  
+To install designate we will need keystone is installed and ready to use.
+
+Generally in openstack all services like designate,nova,magnum have one user and this user have admin role under service project.
+Service project is not must but you can create and use different project names but its good practice to do it.
+https://docs.openstack.org/keystone/pike/admin/cli-keystone-manage-services.html
+
+To create service
+
+Execute "source keystonerc_admin"
+
+Create service project if its not available
+
+openstack project create service --domain default
+
+Create desigate service user
+
+openstack user create --domain default --project service --password-prompt designate
+
+Set admin role to designate user
+
+openstack role add --project service --user designate admin
+
+Designate adında bir servis yaratıyoruz
+
+openstack service create --name designate --description "DNS" dns
+
+Create endpoint for designate
+
+openstack endpoint create --region RegionOne dns public http://<ip_of_controller>:9001/
+openstack endpoint create --region RegionOne dns admin  http://<ip_of_controller>:9001/
+openstack endpoint create --region RegionOne dns internal http://<ip_of_controller>:9001/
+
+Install Designate On Controller
+
+apt-get install designate
+
+Create database and set permissions
+
+mysql -u root -p
+
+CREATE DATABASE designate CHARACTER SET utf8 COLLATE utf8_general_ci;
+GRANT ALL PRIVILEGES ON designate.* TO 'designate'@'localhost' IDENTIFIED BY 'DESIGNATE_DBPASS';
+GRANT ALL PRIVILEGES ON designate.* TO 'designate'@'%' IDENTIFIED BY 'DESIGNATE_DBPASS';
+FLUSH PRIVILAGES;
+EXIT
+
+Install Bind Utils On Controller
+
+apt-get install bind9utils -y
+
+Install Customer Facing DNS Server
+
+apt-get install bind9 bind9utils bind9-doc

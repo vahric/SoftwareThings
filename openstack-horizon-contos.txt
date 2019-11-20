@@ -1,0 +1,20 @@
+To install horizion its enough to execute command below and make change in config ...
+
+yum install openstack-dashboard
+
+From Configuration point of view ...
+
+OPENSTACK_HOST --> Identity Server (Keystone'u göstermeli)
+
+ALLOWED_HOSTS = ['*’]
+https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
+*This is Django thing
+
+No need OPENSTACK_KEYSTONE_MULTIDOMAIN_SUPPORT to set True for now ! 
+
+
+WSGIApplicationGroup %{GLOBAL}
+
+Link : 
+
+https://docs.openstack.org/horizon/latest/install/install-rdo.html

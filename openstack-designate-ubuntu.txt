@@ -1,0 +1,220 @@
+Install Bind Backend
+
+apt-get install bind9 bind9utils bind9-doc
+
+*ubind is backend
+
+Install Customer Facing DNS Server
+
+apt-get install bind9 bind9utils bind9-doc
+
+*udashboard is customer facing one
+
+Install only bind9utils for controller where miniDNS will run
+
+Create rndc secret key on one of server, i create on backend and send it to all
+
+rndc-confgen
+
+Take the key and put in named.conf section on ubind
+
+This is example out ....
+
+#Use with the following in named.conf, adjusting the allow list as needed:
+key "rndc-key" {
+       algorithm hmac-md5;
+       secret "Eg85eq160yaaxmJ6v8Q3UA==";
+ };
+#
+ controls {
+       inet * port 953
+               allow { 127.0.0.1;10.110.220.110; 10.110.220.111; 10.110.220.112; } keys { "rndc-key"; };
+ };
+# End of named.conf
+
+We set all ip address using this key send rndc command to this named on ubind server.
+
+On ubuntu , file name is /etc/bind/named.conf
+
+systemctl restart bind9
+
+**Do same for udashboard server too, we will need only rndc-key for controller mini DNS
+
+On ubuntu , file name is /etc/bind/named.conf.options add this lines too for ubind and udashboard
+
+	allow-new-zones yes;
+        request-ixfr no;
+        listen-on port 53 { 127.0.0.1; 10.110.220.110; };
+        recursion no;
+        allow-query { any; };
+
+systemctl restart bind9
+
+Back to designate configuration On Controllers 
+
+Edit /etc/designate/designate.conf, find sections and fill them all ! 
+
+
+[service:api]
+
+listen = 0.0.0.0:9001
+auth_strategy = keystone
+enable_api_v2 = True
+enable_api_admin = True
+enable_host_header = True
+enabled_extensions_admin = quotas, reports
+
+
+[keystone_authtoken]
+
+auth_type = password
+username = designate
+password = hopkop99!
+project_name = service
+project_domain_name = Default
+user_domain_name = Default
+www_authenticate_uri = http://10.110.220.111:5000/
+auth_url = http://10.110.220.111:5000/
+memcached_servers = 10.110.220.111:11211
+
+
+[DEFAULT]
+
+transport_url = rabbit://openstack:hopkop99!@10.110.220.111:5672/
+
+[storage:sqlalchemy]
+
+connection = mysql+pymysql://designate:hopkop99!@10.110.220.111/designate
+
+
+Lets create designate tables 
+
+su -s /bin/sh -c "designate-manage database sync" designate
+
+Lets get in mysql and check it 
+
+systemctl restart designate-central designate-api
+systemctl status designate-central designate-api
+systemctl enable designate-central designate-api
+
+Time to play with pools.yaml
+
+Default pool is already create , be careful no need to change default yaml pool name 
+
+vi /etc/designate/pools.yaml
+
+- name: default
+  # The name is immutable. There will be no option to change the name after
+  # creation and the only way will to change it will be to delete it
+  # (and all zones associated with it) and recreate it.
+  description: Default Pool
+
+  attributes: {}
+
+  # List out the NS records for zones hosted within this pool
+  # This should be a record that is created outside of designate, that
+  # points to the public IP of the controller node.
+  ns_records:
+    - hostname: ns1.gozukecek1.org.
+      priority: 1
+    - hostname: ns2.gozukecek2.org.
+      priority: 2
+
+  # List out the nameservers for this pool. These are the actual BIND servers.
+  # We use these to verify changes have propagated to all nameservers.
+  nameservers:
+    - host: 10.110.220.112
+      port: 53
+
+  # List out the targets for this pool. For BIND there will be one
+  # entry for each BIND server, as we have to run rndc command on each server
+  targets:
+    - type: bind9
+      description: BIND9 Server 1
+
+      # List out the designate-mdns servers from which BIND servers should
+      # request zone transfers (AXFRs) from.
+      # This should be the IP of the controller node.
+      # If you have multiple controllers you can add multiple masters
+      # by running designate-mdns on them, and adding them here.
+      masters:
+        - host: 127.0.0.1
+          port: 5354
+
+      # BIND Configuration options
+      options:
+        host: 10.110.220.110
+        port: 53
+        rndc_host: 10.110.220.110
+        rndc_port: 953
+        rndc_key_file: /etc/designate/rndc.key
+
+*Check /etc/designate/rndc.key have a key ...
+
+key "rndc-key" { 
+       algorithm hmac-md5;
+       secret "Eg85eq160yaaxmJ6v8Q3UA==";
+ };
+
+
+chgrp designate /etc/designate/rndc.key 
+
+su -s /bin/sh -c "designate-manage pool update" designate
+
+Updating Pools Configuration
+****************************
+2019-11-14 21:06:59.476 23242 INFO designate.manage.pool [designate-manage - - - - -] Updating existing pool: <Pool id:'794ccc2c-d751-44fe-b57f-8894c9f5c842' name:'default'>
+
+On Controller
+apt install designate-worker designate-producer designate-mdns
+
+systemctl start designate-worker designate-producer designate-mdns
+systemctl enable designate-worker designate-producer designate-mdns
+
+source keystonerc_admin 
+ps -aux | grep designate
+
+apt-get install python-designateclient
+
+openstack dns service list
+
++--------------------------------------+-------------+--------------+--------+-------+--------------+
+| id                                   | hostname    | service_name | status | stats | capabilities |
++--------------------------------------+-------------+--------------+--------+-------+--------------+
+| 0c54598e-a23b-4445-bd61-ba4350bc63a8 | ucontroller | api          | UP     | -     | -            |
+| 45c43811-f46f-4bd0-9e7e-6d242ce702b1 | ucontroller | central      | UP     | -     | -            |
+| dea59ba8-edbd-4e34-a3ae-99df2f2f0acd | ucontroller | agent        | UP     | -     | -            |
+| 3b998196-3856-4c9a-a0d9-e28f02a7600a | ucontroller | worker       | UP     | -     | -            |
+| 64fe09fc-1746-445e-91d9-974dd09a7f16 | ucontroller | mdns         | UP     | -     | -            |
+| 613ca3ca-9fed-48c2-ba68-091e581f29bd | ucontroller | producer     | UP     | -     | -            |
++--------------------------------------+-------------+--------------+--------+-------+--------------+
+
+Lets Create a Zone 
+
+openstack zone create --email vahric@gmail.com vahric.net.
+
+
+Add Record to Zone
+
+openstack recordset create --record '10.0.0.1' --type A vahric.net. www
+
+List Records
+
+openstack recordset list vahric2.net.
+
+Links : 
+Hidden Master DNS : https://www.inetdaemon.com/tutorials/internet/dns/configuration/hidden_master.shtml
+
+Blueprint
+
+https://wiki.openstack.org/wiki/Designate/Blueprints/MiniDNS
+
+Some Other Links : 
+
+http://www.admin-magazine.com/Archive/2017/37/Designate-provides-DNS-as-a-Service-in-OpenStack/(offset)/3
+
+Example Pools.yaml files 
+
+https://github.com/openstack/designate/blob/master/etc/designate/pools.yaml.sample
+https://github.com/openstack/tripleo-heat-templates/blob/master/environments/designate-config-ha.yaml
+https://kb.brightcomputing.com/faq/index.php?action=artikel&cat=24&id=403&artlang=en

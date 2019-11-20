@@ -1,0 +1,290 @@
+Designate is Openstack DNS-as-a-Service solution (multi-tenant)
+
+To install designate we will need keystone is installed and ready to use.
+
+Generally in openstack all services like designate,nova,magnum have one user and this user have admin role under service project.
+Service project is not must but you can create and use different project names but its good practice to do it. 
+https://docs.openstack.org/keystone/pike/admin/cli-keystone-manage-services.html
+
+To create service
+
+Execute "source keystonerc_admin"
+
+Create service project if its not available 
+
+openstack project create service --domain default
+
+Create desigate service user
+
+openstack user create --domain default --project service --password-prompt designate
+
+Set admin role to designate user
+
+openstack role add --project service --user designate admin
+
+Designate adında bir servis yaratıyoruz
+
+openstack service create --name designate --description "DNS" dns
+
+Create endpoint for designate
+
+openstack endpoint create --region RegionOne dns public http://10.110.220.1:9001/
+openstack endpoint create --region RegionOne dns admin  http://10.110.220.1:9001/
+openstack endpoint create --region RegionOne dns internal http://10.110.220.1:9001/
+
+Create database and set permissions 
+
+CREATE DATABASE designate CHARACTER SET utf8 COLLATE utf8_general_ci;
+GRANT ALL PRIVILEGES ON designate.* TO 'designate'@'localhost' IDENTIFIED BY 'DESIGNATE_DBPASS';
+GRANT ALL PRIVILEGES ON designate.* TO 'designate'@'%' IDENTIFIED BY 'DESIGNATE_DBPASS';
+FLUSH PRIVILAGES;
+EXIT
+
+Install designate packages
+
+First explain little designate components ; 
+
+designate-api : Known REST API, talk with designate-centeral via RPC
+designate-centeral : Manage all zone and record create,update,delete operations and work with designate-pool-manager for interact external DNS servers
+designate-producer : Manage periodic tasks
+designate-worker : Get works from producer and execute it
+designate-mdns : A small DNS server work like proxy and interact with customer facing dns servers. Also can pull
+designate-agent : Some DNS Servers need something execute locally, its help to do it
+designate-pool-manager : Ensure external DNS servers are sync
+designate-sink : Listen nova and neutron events 
+Customer Facing DNS Servers : Serve DNS request to end users.
+
+About MiniDNS
+Minimal DNS Server backed by designate database
+Utilizes DNS Protocols
+Act as a Master
+Scalable
+
+*Not:With Centos and repo what i added failed with some service and i used -nodeps to bypass, and such services below is not installed , fyi.
+Yum Install Designate Option 1
+
+yum install openstack-designate\*
+**To see whats inside ! 
+yum list openstack-designate\*
+
+***Got an error like below 
+
+Error: Package: 1:openstack-designate-pool-manager-8.0.0-2.4d47719git.el7.noarch (centos-openstack-train)
+           Requires: openstack-designate-common = 1:8.0.0-2.4d47719git.el7
+           Removing: 1:openstack-designate-common-9.0.0-0.2.0rc1.el7.noarch (@centos-openstack-train)
+               openstack-designate-common = 1:9.0.0-0.2.0rc1.el7
+           Updated By: 1:openstack-designate-common-9.0.0-1.el7.noarch (centos-openstack-train)
+               openstack-designate-common = 1:9.0.0-1.el7
+           Available: 1:openstack-designate-common-8.0.0-2.4d47719git.el7.noarch (centos-openstack-train)
+               openstack-designate-common = 1:8.0.0-2.4d47719git.el7
+Error: Package: 1:openstack-designate-zone-manager-8.0.0-2.4d47719git.el7.noarch (centos-openstack-train)
+           Requires: openstack-designate-common = 1:8.0.0-2.4d47719git.el7
+           Removing: 1:openstack-designate-common-9.0.0-0.2.0rc1.el7.noarch (@centos-openstack-train)
+               openstack-designate-common = 1:9.0.0-0.2.0rc1.el7
+           Updated By: 1:openstack-designate-common-9.0.0-1.el7.noarch (centos-openstack-train)
+               openstack-designate-common = 1:9.0.0-1.el7
+           Available: 1:openstack-designate-common-8.0.0-2.4d47719git.el7.noarch (centos-openstack-train)
+               openstack-designate-common = 1:8.0.0-2.4d47719git.el7
+ You could try using --skip-broken to work around the problem
+ You could try running: rpm -Va --nofiles --nodigest
+
+
+Yum Install Option 2
+
+yum install openstack-designate-*
+
+Yum Install Option 3 (Executed This)
+
+yum --enablerepo=centos-openstack-train,epel -y install openstack-designate-api openstack-designate-central openstack-designate-worker openstack-designate-producer openstack-designate-mdns python-designateclient
+
+Install Customer Facing DNS Server
+
+yum install bind bind-utils -y
+
+Create rndc secret key 
+
+rndc-confgen -a -k designate -c /etc/designate/rndc.key -r /dev/urandom
+
+
+Edit named.conf
+add this line before options ...
+include "/etc/designate/rndc.key";
+
+under options
+
+allow-new-zones yes;
+request-ixfr no;
+recursion no;
+listen-on port 53 { 127.0.0.1; };
+allow-query { 127.0.0.1; };
+
+controls {
+  inet 127.0.0.1 port 953
+    allow { 127.0.0.1; } keys { "designate"; };
+};
+
+Then change file permissions
+
+chown named:designate /etc/designate/rndc.key 
+chmod 640 /etc/designate/rndc.key
+
+systemctl enable named;systemctl start named
+
+*To test you can run bind on where designate is installed or different server/vm.
+*Also test for rndc and bind relation on controller node to everything run correctly.
+
+/etc/designate/designate.conf
+
+[service:api]
+listen = 0.0.0.0:9001
+auth_strategy = keystone
+enable_api_v2 = True
+enable_api_admin = True
+enable_host_header = True
+enabled_extensions_admin = quotas, reports
+
+[keystone_authtoken]
+auth_type = password
+username = designate
+password = DESIGNATE_PASS
+project_name = service
+project_domain_name = Default
+user_domain_name = Default
+www_authenticate_uri = http://controller:5000/
+auth_url = http://controller:5000/
+memcached_servers = controller:11211
+
+[DEFAULT]
+
+transport_url = rabbit://openstack:<password>@controller:5672/
+
+[storage:sqlalchemy]
+connection = mysql+pymysql://designate:<designate>@controller/designate
+
+Create database structure 
+
+su -s /bin/sh -c "designate-manage database sync" designate
+
+Start designate
+
+systemctl start designate-central designate-api
+systemctl enable designate-central designate-api
+
+Now time to configure DNS Pool to describe ns,master and customer facing dns servers 
+Create and modify pools.yaml
+
+vi /etc/designate/pools.yaml
+
+- name: testdnspool1
+  # The name is immutable. There will be no option to change the name after
+  # creation and the only way will to change it will be to delete it
+  # (and all zones associated with it) and recreate it.
+  description: Default Pool
+
+  attributes: {}
+
+  # List out the NS records for zones hosted within this pool
+  # This should be a record that is created outside of designate, that
+  # points to the public IP of the controller node.
+  ns_records:
+    - hostname: ns1.vahric.net.
+      priority: 1
+
+  # List out the nameservers for this pool. These are the actual BIND servers.
+  # We use these to verify changes have propagated to all nameservers.
+  nameservers:
+    - host: 127.0.0.1
+      port: 53
+
+  # List out the targets for this pool. For BIND there will be one
+  # entry for each BIND server, as we have to run rndc command on each server
+  targets:
+    - type: bind9
+      description: BIND9 Server 1
+
+      # List out the designate-mdns servers from which BIND servers should
+      # request zone transfers (AXFRs) from.
+      # This should be the IP of the controller node.
+      # If you have multiple controllers you can add multiple masters
+      # by running designate-mdns on them, and adding them here.
+      masters:
+        - host: 127.0.0.1
+          port: 5354
+
+      # BIND Configuration options
+      options:
+        host: 127.0.0.1
+        port: 53
+        rndc_host: 127.0.0.1
+        rndc_port: 953
+        rndc_key_file: /etc/designate/rndc.key
+
+chmod 640 /etc/designate/pools.yaml 
+chgrp designate /etc/designate/pools.yaml
+
+Create Database Structure ...
+
+su -s /bin/sh -c "designate-manage pool update" designate
+
+Updating Pools Configuration
+****************************
+2019-11-10 16:23:57.337 1044 INFO designate.manage.pool [designate-manage - - - - -] Creating new pool: <Pool id:'None' name:'testdnspool1'>
+
+systemctl start designate-worker designate-producer designate-mdns
+systemctl enable designate-worker designate-producer designate-mdns
+
+
+openstack dns service list 
++--------------------------------------+------------+--------------+--------+-------+--------------+
+| id                                   | hostname   | service_name | status | stats | capabilities |
++--------------------------------------+------------+--------------+--------+-------+--------------+
+| 6882e10e-f628-44f7-928f-31da71423832 | controller | api          | UP     | -     | -            |
+| aa8f0a46-ae9b-4880-a46b-7f8b7de789ae | controller | central      | UP     | -     | -            |
+| dcfc1b88-e3ec-4c9a-8b1a-4f828e855ecf | controller | producer     | UP     | -     | -            |
+| ac88e311-2595-4820-a15d-67960c8c7c23 | controller | worker       | UP     | -     | -            |
+| c6d3027d-9c63-4fe7-a954-440eaac02dbe | controller | mdns         | UP     | -     | -            |
++--------------------------------------+------------+--------------+--------+-------+--------------+
+
+Before Create Zone
+
+be careful before already default pool is created, 
+
+Lets Create a Zone 
+
+[root@controller ~(keystone_admin)]# openstack zone create vahric.net. --email vahric@vahric.net
++----------------+--------------------------------------+
+| Field          | Value                                |
++----------------+--------------------------------------+
+| action         | CREATE                               |
+| attributes     |                                      |
+| created_at     | 2019-11-10T14:39:21.000000           |
+| description    | None                                 |
+| email          | vahric@vahric.net                    |
+| id             | ca915053-42e7-4de2-a2f8-310ecdf7e964 |
+| masters        |                                      |
+| name           | vahric.net.                          |
+| pool_id        | 8725ec2b-43d2-488f-9dcd-2ab303fc62c7 |
+| project_id     | 83c084d7af5f4dd3a767f7c38df5d519     |
+| serial         | 1573396761                           |
+| status         | PENDING                              |
+| transferred_at | None                                 |
+| ttl            | 3600                                 |
+| type           | PRIMARY                              |
+| updated_at     | None                                 |
+| version        | 1                                    |
++----------------+--------------------------------------+
+
+Add A Record 
+
+openstack recordset create --records '10.0.0.1' --type A vahric2.net. www
+
+Links ;
+
+https://www.server-world.info/en/note?os=CentOS_7&p=openstack_train3&f=11
+https://www.server-world.info/en/note?os=CentOS_7&p=openstack_train3&f=12
+https://opensource.com/article/19/4/getting-started-openstack-designate (Diagram)
+https://www.slideshare.net/grahamhayes/designate-install-and-operate-workshop (Nova Integration)
+https://docs.openstack.org/designate/queens/install/get_started.html
+https://docs.openstack.org/designate/latest/install/install-rdo.html
+https://docs.openstack.org/ocata/cli-reference/designate.html (Designate Command-line)
+https://www.slideshare.net/grahamhayes/designate-deep-dive-talk (Sink)
