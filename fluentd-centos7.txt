@@ -1,0 +1,86 @@
+Install Fluentd
+
+First to be sure you do not have any time issue
+On Centos7 we will use Chrony
+
+yum -y install chrony 
+systemctl enable chronyd && systemctl start chronyd && systemctl status chronyd
+
+[root@fluend01 ~]# chronyc tracking
+Reference ID    : C18C6428 (samur.ulak.net.tr)
+Stratum         : 3
+Ref time (UTC)  : Sat Dec 21 07:36:22 2019
+System time     : 0.000000000 seconds fast of NTP time
+Last offset     : +1.665222883 seconds
+RMS offset      : 1.665222883 seconds
+Frequency       : 0.000 ppm slow
+Residual freq   : +50.860 ppm
+Skew            : 1000000.000 ppm
+Root delay      : 0.113110624 seconds
+Root dispersion : 2.159039974 seconds
+Update interval : 0.0 seconds
+Leap status     : Normal
+
+Reference ID – the reference ID and name to which the computer is currently synced.
+Stratum – number of hops to a computer with an attached reference clock.
+Ref time – this is the UTC time at which the last measurement from the reference source was made.
+System time – delay of system clock from synchronized server.
+Last offset – estimated offset of the last clock update.
+RMS offset – long term average of the offset value.
+Frequency – this is the rate by which the system’s clock would be wrong if chronyd is not correcting it. It is provided in ppm (parts per million).
+Residual freq – residual frequency indicated the difference between the measurements from reference source and the frequency currently being used.
+Skew – estimated error bound of the frequency.
+Root delay – total of the network path delays to the stratum computer, from which the computer is being synced.
+Leap status – this is the leap status which can have one of the following values – normal, insert second, delete second or not synchronized.
+
+[root@fluend01 ~]# chronyc sources
+210 Number of sources = 4
+MS Name/IP address         Stratum Poll Reach LastRx Last sample               
+===============================================================================
+^* samur.ulak.net.tr             2   6    77    17   +121us[ +332us] +/-   57ms
+^? 162.159.200.123               0   8     0     -     +0ns[   +0ns] +/-    0ns
+^? Time100.Stupi.SE              0   8     0     -     +0ns[   +0ns] +/-    0ns
+^? ntp2.home4u.ch                0   8     0     -     +0ns[   +0ns] +/-    0ns
+
+Then modify file limits on linux, add lines below end of the file /etc/security/limits.conf but do not reboot because we will modify system parameters too
+
+root soft nofile 65536
+root hard nofile 65536
+* soft nofile 65536
+* hard nofile 65536
+
+Disable firewalld and selinux
+
+systemctl stop firewalld;systemctl disable firewalld
+sed -i 's/enforcing/disabled/g' /etc/selinux/config /etc/selinux/config
+
+Add lines below end of the /etc/sysctl.conf file 
+
+net.core.somaxconn = 1024
+net.core.netdev_max_backlog = 5000
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.ipv4.tcp_wmem = 4096 12582912 16777216
+net.ipv4.tcp_rmem = 4096 12582912 16777216
+
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.ip_local_port_range = 10240 65535
+
+to more adjustment and netflix lover the go this link https://www.slideshare.net/brendangregg/how-netflix-tunes-ec2-instances-for-performance 
+
+Now time to reboot 
+
+[root@fluend01 ~]# reboot
+
+Now time to install Fluentd or td-agent
+*You can find out different via this link https://www.fluentd.org/faqs
+
+Execute Command Below 
+
+curl -L https://toolbelt.treasuredata.com/sh/install-redhat-td-agent2.5.sh | sh
+
+Message from Flentd : Installation completed. Happy Logging! :D :))))
+
+Activate and run td-agent
+
+

@@ -1,0 +1,78 @@
+Jenkins is short automation tool, open source CI/CD tool.
+
+First install epel
+
+yum install epel-release -y
+yum update -y
+
+Disable SELinux (Optional but could be needed)
+
+Disable it temporarily
+
+setenforce 0
+
+Disable
+
+vi /etc/sysconfig/selinux
+
+# This file controls the state of SELinux on the system.
+# SELINUX= can take one of these three values:
+#     enforcing - SELinux security policy is enforced.
+#     permissive - SELinux prints warnings instead of enforcing.
+#     disabled - No SELinux policy is loaded.
+SELINUX=disabled ****
+# SELINUXTYPE= can take one of three two values:
+#     targeted - Targeted processes are protected,
+#     minimum - Modification of targeted policy. Only selected processes are protected.
+#     mls - Multi Level Security protection.
+SELINUXTYPE=targeted
+
+
+Disable Firewalld (Optional but could be needed)
+
+systemctl disable firewalld
+
+Then install Java
+
+yum install java-1.8.0-openjdk.x86_64 -y
+
+Test it ! 
+
+java -version
+openjdk version "1.8.0_242"
+OpenJDK Runtime Environment (build 1.8.0_242-b08)
+OpenJDK 64-Bit Server VM (build 25.242-b08, mixed mode)
+
+Set paths (Optional but could be needed)
+
+vi /etc/profile
+#Add and modify lines
+
+JAVA_HOME="/usr/lib/jvm/jre-1.8.0-openjdk"
+JRE_HOME="/usr/lib/jvm/jre"
+export PATH USER LOGNAME MAIL HOSTNAME HISTSIZE HISTCONTROL JAVA_HOME JRE_HOME
+
+Get repo key and add repo
+
+rpm --import https://jenkins-ci.org/redhat/jenkins-ci.org.key
+wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo
+yum update
+
+Install Jenkins
+
+yum install jenkins -y
+
+systemctl start jenkins
+/sbin/chkconfig jenkins on
+
+http://10.110.65.75:8080
+
+cat /var/lib/jenkins/secrets/initialAdminPassword
+
+Use the key to login UI
+
+Choose Install suggested plugins
+
+Create your first admin user
+
+Setup complate, start using jenkins ....

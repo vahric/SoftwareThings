@@ -1,0 +1,39 @@
+On Server Site
+
+Update all packages first 
+
+apt-get update
+apt-get upgrade -y
+
+Install NFS Server
+  
+Install required packages ...
+
+apt-get install nfs-kernel-server -y
+apt-get install nfs-common -y
+apt-get install -y net-tools
+
+Export something via NFS
+
+vi /etc/exports
+
+/path_on_server           10.10.0.0/24(rw,sync,no_root_squash,no_subtree_check)
+
+Explanation :
+
+rw : read/write
+sync: you are sure that data is written
+no_subtree_check : if whole volume exported use like this
+no_root_squash : if shared file need to be onwned by root otherwise remote root user will saved as nobody
+
+
+After each update of exports file execute command below
+
+exportfs -a
+
+
+On Client Site
+
+apt-get install nfs-common -y
+
+mount -t nfs ip_of_nfs_server:/path/exported/onfsserver/ /path/on/localhost

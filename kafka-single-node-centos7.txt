@@ -1,0 +1,87 @@
+Before Install Kafka, lets learn little abput it
+
+Kafka Cluster consists of one or more servers which we should call Broker
+
+Topic is like a chat room, channles in slack where Producer push data and Consummer get data from there
+
+Kafka topic partition and replication;
+Each topic can have one or more partition.
+Partition is like write-ahead log
+Replication is copy of partition on other broker
+
+https://www.confluent.io/blog/hands-free-kafka-replication-a-lesson-in-operational-simplicity/
+
+Zookeeper is very important, its what etcd for k8s. Not only election also topics, partitions like things stored there 
+
+To install Kafka On Centos 7
+
+Disable SELinux
+
+sed -i 's/enforcing/disabled/g' /etc/selinux/config /etc/selinux/config
+
+Update Your Centos 
+
+yum update -y && reboot
+
+Install JDK 1.8.x
+
+yum install java-1.8.0-openjdk.x86_64
+
+Append lines below inside /etc/profile
+
+export JAVA_HOME=/usr/lib/jvm/jre-1.8.0-openjdk
+export JRE_HOME=/usr/lib/jvm/jre
+
+source /etc/profile
+
+Disable Firewall (Optional)
+
+systemctl stop firewalld; systemctl disable firewalld
+
+Install Wget
+
+yum install wget -y
+
+Download Kafka
+
+wget http://www-us.apache.org/dist/kafka/2.4.0/kafka_2.12-2.4.0.tgz
+
+Untar Kafka tar file under /opt
+
+tar -xvf kafka_2.12-2.4.0.tgz --dir=/opt
+
+Move Kafka Folder and Start Zookeeper
+
+cd /opt/kafka_2.12-2.4.0/
+bin/zookeeper-server-start.sh -daemon config/zookeeper.properties
+
+root      2069     1 13 14:58 pts/0    00:00:00 /usr/lib/jvm/jre-1.8.0-openjdk/bin/java -Xmx512M -Xms512M -server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPerc
+
+In Java, -Xms set initial Java heap size, while -Xmx set the maximum Java heap size.
+The Java heap is the amount of memory allocated to applications running in the JVM
+Look Zing: https://www.azul.com/products/zing/whatisit/
+
+GC1 is recommended Garbage Collcetion, max pause and threshold
+-XX:+UseG1GC -XX:MaxGCPauseMillis=20
+-XX:InitiatingHeapOccupancyPerc
+https://docs.oracle.com/cd/E40972_01/doc.70/e40973/cnf_jvmgc.htm#autoId2
+
+Start Kafka, if you need to adjust memory of JVM set variable on shell
+export KAFKA_HEAP_OPTS="-Xmx256M -Xms128M"
+
+bin/kafka-server-start.sh config/server.properties &
+
+Check the line [2019-12-20 15:25:13,529] INFO [KafkaServer id=0] started (kafka.server.KafkaServer)
+
+root      2518     1  0 15:25 ?        00:00:58 /usr/lib/jvm/jre-1.8.0-openjdk/bin/java -Xmx1G -Xms1G -server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent
+
+Go,download and install from https://www.conduktor.io
+
+Set broker_ip/hostname:9092 and zookeeper:
+
+*Not : Be careful before connect to Broker, it should be ip or hostname, you can change it from config/server.properties
+https://stackoverflow.com/questions/53813715/kafka-broker-is-not-available-from-localhost
+
+Other Links :
+https://www.vultr.com/docs/how-to-install-apache-kafka-on-centos-7
+

@@ -41,6 +41,11 @@ exportfs -a
 
 On Client Site
 
+Be aware nfs-utils is installed if not you will get error below 
+ 
+mount: wrong fs type, bad option, bad superblock on 192.168.1.5:/home/shared, missing codepage or helper program, or other error (for several filesystems (e.g. nfs, cifs) you might need a /sbin/mount.<type> helper program)  
+In some cases useful info is found in syslog - try dmesg | tail or so.
+
 mount -t nfs ip_of_nfs_server:/path/exported/onfsserver/ /path/on/localhost 
 
 On Client Site fstab
