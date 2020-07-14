@@ -23,6 +23,11 @@ tcp        0      0 glusterclient01.do:1005 gluster2.dorukclo:49152 ESTABLISHED
 After GlusterFS 3.4 ports used for 49152-49155 to bricks ... 
 
 
+Exmaple Benchmarkings
+
+https://cognoz.github.io/simple-fio/
+
+
 Links : 
 
 Explanations about GlusterFS
