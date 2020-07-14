@@ -212,3 +212,10 @@ https://docs.oracle.com/en/operating-systems/oracle-linux/gluster-storage/gluste
 Github Links : 
 
 https://github.com/gluster/gluster-block
+
+Other Documents 
+
+https://www.openshift.com/blog/quick-dirty-block-storage-openshift-iscsi
+https://pkalever.wordpress.com/2019/06/04/high-availability-with-gluster-block/
+https://pkalever.wordpress.com/2019/05/06/starting-with-gluster-block/
+https://pkalever.wordpress.com/tag/glusterfs/
