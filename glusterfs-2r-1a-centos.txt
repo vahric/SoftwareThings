@@ -128,6 +128,10 @@ Good Installation Documents
 https://platform9.com/blog/glusterfs-how-to/ (Perfect)
 https://www.gigenet.com/blog/increasing-storage-speed-availability-glusterfs/ (Simple)
 
+About Volume Management
+
+https://docs.gluster.org/en/latest/Administrator%20Guide/Managing%20Volumes/
+
 Performance Test Links
 
 https://s3.amazonaws.com/aws001/guided_trek/Performance_in_a_Gluster_Systemv6F.pdf

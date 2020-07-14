@@ -26,6 +26,7 @@ After GlusterFS 3.4 ports used for 49152-49155 to bricks ...
 Exmaple Benchmarkings
 
 https://cognoz.github.io/simple-fio/
+http://wiki.stoney-cloud.org/wiki/GlusterFS_Benchmark
 
 
 Links : 

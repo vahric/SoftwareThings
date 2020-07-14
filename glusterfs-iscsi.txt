@@ -1,0 +1,214 @@
+
+
+To run iscsi on glusterfs you need to have multiple things like tcmu, glfs handler, targetcli to create iscsi things bla bla ...
+What gluster-block framework is helping to install all needed things and provide cli to do all things together easyly
+
+Install gluster-block on all glusterfs nodes and activate 
+
+yum install gluster-block -y (dont worry it will install tcmu-runner too ! )
+systemctl enable --now tcmu-runner gluster-blockd
+
+List Volumes
+
+->gluster volume list
+testvolume1
+
+Look before what we have 
+
+targetcli 
+targetcli shell version 2.1.fb49
+Copyright 2011-2013 by Datera, Inc and others.
+For help on commands, type 'help'.
+
+/> ls
+o- / ......................................................................................................................... [...]
+  o- backstores .............................................................................................................. [...]
+  | o- block .................................................................................................. [Storage Objects: 0]
+  | o- fileio ................................................................................................. [Storage Objects: 0]
+  | o- pscsi .................................................................................................. [Storage Objects: 0]
+  | o- ramdisk ................................................................................................ [Storage Objects: 0]
+  | o- user:glfs .............................................................................................. [Storage Objects: 0]
+  | o- user:qcow .............................................................................................. [Storage Objects: 0]
+  o- iscsi ............................................................................................................ [Targets: 0]
+  o- loopback ......................................................................................................... [Targets: 0]
+/> 
+
+gluster-block create testvolume1/iscsilun1 ha 2 prealloc no 212.58.24.134,212.58.24.136 10GiB
+IQN: iqn.2016-12.org.gluster-block:08bf495b-3638-4d30-a52c-47ee2ee4c464
+PORTAL(S):  212.58.24.134:3260 212.58.24.136:3260
+RESULT: SUCCESS
+
+ha count : It is the count of the number of paths to the block target server. hacount provides high availability via multipathing capability of iSCSI. If there is a path failure, the I/Os will not be interrupted and will be served via another available paths.
+
+[root@gluster3 ~]# targetcli 
+targetcli shell version 2.1.fb49
+Copyright 2011-2013 by Datera, Inc and others.
+For help on commands, type 'help'.
+
+/> ls
+o- / ......................................................................................................................... [...]
+  o- backstores .............................................................................................................. [...]
+  | o- block .................................................................................................. [Storage Objects: 0]
+  | o- fileio ................................................................................................. [Storage Objects: 0]
+  | o- pscsi .................................................................................................. [Storage Objects: 0]
+  | o- ramdisk ................................................................................................ [Storage Objects: 0]
+  | o- user:glfs .............................................................................................. [Storage Objects: 1]
+  | | o- iscsilun1 ................ [testvolume1@212.58.24.134/block-store/08bf495b-3638-4d30-a52c-47ee2ee4c464 (10.0GiB) activated]
+  | |   o- alua ................................................................................................... [ALUA Groups: 1]
+  | |     o- default_tg_pt_gp ....................................................................... [ALUA state: Active/optimized]
+  | o- user:qcow .............................................................................................. [Storage Objects: 0]
+  o- iscsi ............................................................................................................ [Targets: 1]
+  | o- iqn.2016-12.org.gluster-block:08bf495b-3638-4d30-a52c-47ee2ee4c464 ................................................ [TPGs: 2]
+  |   o- tpg1 .................................................................................................. [gen-acls, no-auth]
+  |   | o- acls .......................................................................................................... [ACLs: 0]
+  |   | o- luns .......................................................................................................... [LUNs: 1]
+  |   | | o- lun0 .............................................................................. [user/iscsilun1 (default_tg_pt_gp)]
+  |   | o- portals .................................................................................................... [Portals: 1]
+  |   |   o- 212.58.24.134:3260 ............................................................................................... [OK]
+  |   o- tpg2 ........................................................................................................... [disabled]
+  |     o- acls .......................................................................................................... [ACLs: 0]
+  |     o- luns .......................................................................................................... [LUNs: 1]
+  |     | o- lun0 .............................................................................. [user/iscsilun1 (default_tg_pt_gp)]
+  |     o- portals .................................................................................................... [Portals: 1]
+  |       o- 212.58.24.136:3260 ............................................................................................... [OK]
+  o- loopback ......................................................................................................... [Targets: 0]
+
+View From Client ....
+
+[root@glusterclient01 mnt]# ls -al
+total 3145728
+drwxr-xr-x.  5 root root        126 Jul 14 14:19 .
+dr-xr-xr-x. 17 root root        224 Oct  7  2019 ..
+d---------.  2 root root         40 Jul 14 14:19 block-meta
+d---------.  2 root root         50 Jul 14 14:19 block-store
+-rw-r--r--.  1 root root 1073741824 Jul 13 23:53 test_gluster
+-rw-r--r--.  1 root root 1073741824 Jul 13 23:55 test_gluster_w
+-rw-r--r--.  1 root root 1073741824 Jul 13 23:58 test_gluster_w2
+[root@glusterclient01 mnt]# ls -al block-meta/
+total 1
+d---------. 2 root root  40 Jul 14 14:19 .
+drwxr-xr-x. 5 root root 126 Jul 14 14:19 ..
+-rw-------. 1 root root 254 Jul 14 14:19 iscsilun1
+-rw-------. 1 root root   0 Jul 14 14:19 meta.lock
+[root@glusterclient01 mnt]# ls -al block-store/
+total 0
+d---------. 2 root root          50 Jul 14 14:19 .
+drwxr-xr-x. 5 root root         126 Jul 14 14:19 ..
+-rw-------. 1 root root 10737418240 Jul 14 14:19 08bf495b-3638-4d30-a52c-47ee2ee4c464
+
+List Volume
+
+[root@gluster1 ~]# gluster-block list testvolume1
+iscsilun1
+
+[root@gluster1 ~]# gluster-block info testvolume1/iscsilun1
+NAME: iscsilun1
+VOLUME: testvolume1
+GBID: 08bf495b-3638-4d30-a52c-47ee2ee4c464
+SIZE: 10.0 GiB
+HA: 2
+PASSWORD: 
+EXPORTED NODE(S): 212.58.24.136 212.58.24.134
+
+Switch To Client Site 
+
+[root@glusteriscsiclient01 ~]# yum install iscsi-initiator-utils device-mapper-multipath -y
+
+[root@glusteriscsiclient01 ~]# systemctl enable iscsid
+Created symlink from /etc/systemd/system/multi-user.target.wants/iscsid.service to /usr/lib/systemd/system/iscsid.service.
+
+[root@glusteriscsiclient01 ~]# iscsiadm -m discovery -t st -p 212.58.24.136 -l
+212.58.24.134:3260,1 iqn.2016-12.org.gluster-block:08bf495b-3638-4d30-a52c-47ee2ee4c464
+212.58.24.136:3260,2 iqn.2016-12.org.gluster-block:08bf495b-3638-4d30-a52c-47ee2ee4c464
+Logging in to [iface: default, target: iqn.2016-12.org.gluster-block:08bf495b-3638-4d30-a52c-47ee2ee4c464, portal: 212.58.24.134,3260] (multiple)
+Logging in to [iface: default, target: iqn.2016-12.org.gluster-block:08bf495b-3638-4d30-a52c-47ee2ee4c464, portal: 212.58.24.136,3260] (multiple)
+Login to [iface: default, target: iqn.2016-12.org.gluster-block:08bf495b-3638-4d30-a52c-47ee2ee4c464, portal: 212.58.24.134,3260] successful.
+Login to [iface: default, target: iqn.2016-12.org.gluster-block:08bf495b-3638-4d30-a52c-47ee2ee4c464, portal: 212.58.24.136,3260] successful.
+
+[root@glusteriscsiclient01 ~]# iscsiadm -m session
+tcp: [1] 212.58.24.134:3260,1 iqn.2016-12.org.gluster-block:08bf495b-3638-4d30-a52c-47ee2ee4c464 (non-flash)
+tcp: [2] 212.58.24.136:3260,2 iqn.2016-12.org.gluster-block:08bf495b-3638-4d30-a52c-47ee2ee4c464 (non-flash)
+
+Add this lines end of the multipath.conf 
+
+# LIO iSCSI
+devices {
+  device {
+    vendor "LIO-ORG"
+    user_friendly_names "yes" # names like mpatha
+    path_grouping_policy "failover" # one path per group
+    path_selector "round-robin 0"
+    path_checker "tur"
+    prio "const"
+    rr_weight "uniform"
+  }
+}
+
+systemctl restart multipathd
+systemctl status multipathd
+
+[root@glusteriscsiclient01 ~]# lsblk 
+NAME            MAJ:MIN RM  SIZE RO TYPE  MOUNTPOINT
+sda               8:0    0   40G  0 disk  
+|-sda1            8:1    0    1G  0 part  /boot
+`-sda2            8:2    0   39G  0 part  
+  |-centos-root 253:0    0 35.1G  0 lvm   /
+  `-centos-swap 253:1    0  3.9G  0 lvm   [SWAP]
+sdb               8:16   0   10G  0 disk  
+`-mpatha        253:2    0   10G  0 mpath 
+sdc               8:32   0   10G  0 disk  
+`-mpatha        253:2    0   10G  0 mpath 
+sr0              11:0    1 1024M  0 rom 
+
+[root@glusteriscsiclient01 ~]# mkfs.xfs /dev/mapper/mpatha 
+meta-data=/dev/mapper/mpatha     isize=512    agcount=4, agsize=655360 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=1        finobt=0, sparse=0
+data     =                       bsize=4096   blocks=2621440, imaxpct=25
+         =                       sunit=0      swidth=0 blks
+naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal log           bsize=4096   blocks=2560, version=2
+         =                       sectsz=512   sunit=0 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+
+mount /dev/mapper/mpatha /mnt/
+
+yum install fio
+
+
+[root@glusteriscsiclient01 ~]# fio --randrepeat=1 --ioengine=libaio --direct=1 --gtod_reduce=1 --name=test --filename=/mnt/testiscsi --bs=4k --iodepth=64 --size=1G --readwrite=randwrite
+test: (g=0): rw=randwrite, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=64
+fio-3.7
+Starting 1 process
+test: Laying out IO file (1 file / 1024MiB)
+Jobs: 1 (f=1): [w(1)][37.5%][r=0KiB/s,w=4432KiB/s][r=0,w=1108 IOPS][eta 01m:45s]
+
+Terms : 
+
+TGT (Linux Scsi Target Framework- iSCSI/Fiber Channel/SRP(SCSI RDMA Protocol)) 
+LIO : in-kernel scsi target. Not like IET,tgt,SCST.
+Backstore or Storage Engine : Medya type, block(all block devices like hdd,ssd,ram disk) File(img,qcoq2,vmdk) , Raw (memory)
+TCM : Another name of LIO. TCM Targets run in the kernel.
+TCMU: Run in user space, user space implamentation of iscsi to support RBD, GLFS or others ...
+tcmu-runner : Interacing with TCMU.
+UIO : Device driver for userspace
+
+Links : 
+
+Manage backstore,target,portals,auth
+https://wiki.alpinelinux.org/wiki/Linux_iSCSI_Target_(TCM)
+https://www.slideshare.net/LeeDuncan16/using-iscsi-lfnw
+
+Manuel iscsi target links : 
+
+https://www.linuxjournal.com/content/creating-software-backed-iscsi-targets-red-hat-enterprise-linux-6
+https://www.cyberciti.biz/tips/howto-setup-linux-iscsi-target-sanwith-tgt.html
+https://docs.gluster.org/en/latest/Administrator%20Guide/GlusterFS%20iSCSI/
+
+Oracle Documents : 
+
+https://docs.oracle.com/en/operating-systems/oracle-linux/gluster-storage/gluster-access.html#gluster-block-storage-create
+
+Github Links : 
+
+https://github.com/gluster/gluster-block
