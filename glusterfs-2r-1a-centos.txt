@@ -1,0 +1,133 @@
+This article about 2 replica one arbiter config 
+
+Aribter is quarom node like MongoDB use for 3 node cluster to reduce storage requirment, keep data on two servers will be enough
+Quarom is brick level
+Mostly for stretch cluster, this node could be on out of trusted pool like in cloud with high latency
+This node never impact system, only used when fail happen and until heal over
+
+Processes ; 
+
+glusterd --> gluster management daemon
+glusterfsd --> per brick daemon, managed by glusterd
+glusterfs --> NFS,FUSE,Heal daemon
+gluster --> CLI Tool
+
+*FUSE : Filesystem user space
+*libgfapi : more fast, efficent, no FUSE need 
+https://staged-gluster-docs.readthedocs.io/en/release3.7.0beta1/Features/libgfapi/
+
+Use FQDN for nodes or use /etc/hosts file to describe servers
+
+Disable firewalld service
+Disable selinux
+
+Add disk as a brick and format it xfs 
+
+mkfs.xfs /dev/sdb1
+
+mount /dev/sdb1 /gluster1/disk1/
+mount /dev/sdb1 /gluster2/disk1/
+mount /dev/sdb1 /gluster3/disk1/
+
+yum install centos-release-gluster
+
+yum install glusterfs-server -y
+
+Enable service at startup if its not
+
+systemctl enable glusterd
+
+gluster peer status
+Number of Peers: 0
+
+gluster peer probe gluster2
+peer probe: success. 
+
+[root@gluster1 ~]# gluster peer probe gluster2
+peer probe: success. 
+
+Hostname: gluster1.dorukcloud.com
+Uuid: 655487b5-e968-4b25-9562-048dd7deaaf7
+State: Peer in Cluster (Connected)
+
+[root@gluster1 ~]# gluster pool list
+UUID					Hostname 	State
+90f5bbcb-2a71-47db-8b24-6a53dda27cda	gluster2 	Connected 
+80035be6-c02f-4eb4-9629-ee3b11ddea9e	gluster3 	Connected 
+655487b5-e968-4b25-9562-048dd7deaaf7	localhost	Connected 
+
+
+[root@gluster1 ~]# gluster volume create testvolume1 replica 2 arbiter 1 gluster1:/gluster1/disk1 gluster2:/gluster2/disk1 gluster3:/gluster3/disk1
+volume create: testvolume1: failed: The brick gluster1:/gluster1/disk1 is a mount point. Please create a sub-directory under the mount point and use that as the brick directory. Or use 'force' at the end of the command if you want to override this behavior.
+
+Create folder under all and use it as a brick
+
+[root@gluster1 ~]# gluster volume create testvolume1 replica 2 arbiter 1 gluster1:/gluster1/disk1/folder1 gluster2:/gluster2/disk1/folder1 gluster3:/gluster3/disk1/folder1
+volume create: testvolume1: success: please start the volume to access data
+
+Note: Enabling the arbiter feature automatically configures client-quorum to 'auto'. This setting is not to be changed.
+
+Space need for arbiter simple 4KB * Number of file you will host ...
+
+Start volume 
+
+[root@gluster1 /]# gluster volume start testvolume1
+volume start: testvolume1: success
+
+[root@gluster1 /]# ls -al /gluster1/disk1/folder1/.glusterfs/
+total 4
+drw------- 7 root root 99 Jul  9 20:33 .
+drwxr-xr-x 3 root root 24 Jul  9 20:30 ..
+drwx------ 3 root root 16 Jul  9 20:32 00
+drw------- 4 root root 32 Jul  9 20:32 changelogs
+-rw-r--r-- 1 root root 19 Jul  9 20:33 health_check
+drw------- 5 root root 55 Jul  9 20:32 indices
+drwxr-xr-x 2 root root  6 Jul  9 20:32 landfill
+drw------- 2 root root  6 Jul  9 20:32 unlink
+
+gluster volume stop testvolume1
+
+[root@gluster1 /]# gluster volume info 
+ 
+Volume Name: testvolume1
+Type: Replicate
+Volume ID: eed6fdc8-94d1-45f1-800c-3559ec196d1b
+Status: Started
+Snapshot Count: 0
+Number of Bricks: 1 x (2 + 1) = 3
+Transport-type: tcp
+Bricks:
+Brick1: gluster1:/gluster1/disk1/folder1
+Brick2: gluster2:/gluster2/disk1/folder1
+Brick3: gluster3:/gluster3/disk1/folder1 (arbiter)
+Options Reconfigured:
+transport.address-family: inet
+storage.fips-mode-rchecksum: on
+nfs.disable: on
+performance.client-io-threads: off
+
+
+Links : 
+
+Different format, chunk, block or some other things there ....
+https://access.redhat.com/documentation/en-us/red_hat_gluster_storage/3/html/administration_guide/formatting_and_mounting_bricks
+
+Read For Arbiter 
+
+https://docs.gluster.org/en/latest/Administrator%20Guide/arbiter-volumes-and-quorum/
+
+https://access.redhat.com/documentation/en-us/red_hat_gluster_storage/3.3/html/administration_guide/creating_arbitrated_replicated_volumes (rbiter Sizing)
+
+Good General Explanations 
+
+https://people.redhat.com/ndevos/talks/gluster_for_sysadmins-amsterdam-20140304.pdf
+https://www.socallinuxexpo.org/scale10x-supporting/sites/default/files/presentations/Replacing%20Your%20Proprietary%20Scale-out%20NAS%20with%20GlusterFS.pdf
+
+Good Installation Documents 
+
+https://platform9.com/blog/glusterfs-how-to/ (Perfect)
+https://www.gigenet.com/blog/increasing-storage-speed-availability-glusterfs/ (Simple)
+
+Performance Test Links
+
+https://s3.amazonaws.com/aws001/guided_trek/Performance_in_a_Gluster_Systemv6F.pdf

@@ -1,0 +1,29 @@
+
+yum install -y glusterfs-client
+
+Configure and be sure about host file or dns resolution of gluster trusted pool members
+
+First only use one of the node from glusterfs cluster client will find out all itself 
+mount -t glusterfs gluster3.dorukcloud.com:/testvolume1 /mnt/
+
+
+[root@glusterclient01 ~]# mount | grep gluster
+gluster3.dorukcloud.com:/testvolume1 on /mnt type fuse.glusterfs (rw,relatime,user_id=0,group_id=0,default_permissions,allow_other,max_read=131072)
+
+Fuse client inherently balanced and connected each bricks
+
+[root@glusterclient01 ~]# netstat -a | grep gluster
+tcp        0      0 glusterclient01.do:1019 gluster1.dorukclo:49153 ESTABLISHED
+tcp        0      0 glusterclient01.dor:ssh nergis.doruk.net.:57395 ESTABLISHED
+tcp        0      0 glusterclient01.do:1023 gluster3.dorukclo:24007 ESTABLISHED
+tcp        0      0 glusterclient01.do:1017 gluster3.dorukclo:49153 ESTABLISHED
+tcp        0      0 glusterclient01.do:1005 gluster2.dorukclo:49152 ESTABLISHED
+
+24007 Gluster daemon , looks like come from mount endpoint
+After GlusterFS 3.4 ports used for 49152-49155 to bricks ... 
+
+
+Links : 
+
+Explanations about GlusterFS
+https://people.redhat.com/ndevos/talks/gluster_for_sysadmins-amsterdam-20140304.pdf
