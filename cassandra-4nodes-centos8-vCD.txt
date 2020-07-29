@@ -223,3 +223,5 @@ https://virtualhow.wordpress.com/2020/02/04/vcd97-cass/ (vCloud)
 http://www.vstellar.com/2018/09/09/vcloud-availability-for-vcloud-director-part-5-deploy-and-configure-cassandra-cluster/ (vCloud)
 
 https://docs.apigee.com/private-cloud/v4.17.09/about-cassandra-replication-factor-and-consistency-level (Replication Factor and Consistency)
+
+https://docs.datastax.com/en/cql-oss/3.3/cql/cql_using/useUpdateKeyspaceRF.html (Replication Factor Set)
