@@ -1,0 +1,108 @@
+We will install single node RabbitMQ for vCloud Director to use CSE or some other things
+
+Sure you have updated os
+
+dnf check-update
+dnf update
+
+Disable Firewall and selinux
+
+systemctl stop firewalld
+systemctl disable firewalld
+
+setenforce 0
+
+Also disable from selinux conf file too ! 
+vi /etc/selinux/config --> SELINUX=disabled
+
+Why we are disabling selinux and firewall
+Actually this is for cluster ....
+Port Access
+
+SELinux, and similar mechanisms may prevent RabbitMQ from binding to a port. When that happens, RabbitMQ will fail to start. Firewalls can prevent nodes and CLI tools from communicating with each other. Make sure the following ports can be opened:
+
+    4369: epmd, a peer discovery service used by RabbitMQ nodes and CLI tools
+    5672, 5671: used by AMQP 0-9-1 and 1.0 clients without and with TLS
+    25672: used for inter-node and CLI tools communication (Erlang distribution server port) and is allocated from a dynamic range (limited to a single port by default, computed as AMQP port + 20000). Unless external connections on these ports are really necessary (e.g. the cluster uses federation or CLI tools are used on machines outside the subnet), these ports should not be publicly exposed. See networking guide for details.
+    35672-35682: used by CLI tools (Erlang distribution client ports) for communication with nodes and is allocated from a dynamic range (computed as server distribution port + 10000 through server distribution port + 10010). See networking guide for details.
+    15672: HTTP API clients, management UI and rabbitmqadmin (only if the management plugin is enabled)
+    61613, 61614: STOMP clients without and with TLS (only if the STOMP plugin is enabled)
+    1883, 8883: (MQTT clients without and with TLS, if the MQTT plugin is enabled
+    15674: STOMP-over-WebSockets clients (only if the Web STOMP plugin is enabled)
+    15675: MQTT-over-WebSockets clients (only if the Web MQTT plugin is enabled)
+
+
+Set hostname if you did not !
+
+hostnamectl set-hostname <name>
+
+To see it use hostnamectl status
+
+We need EPEL and Install EPEL
+
+dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+
+No need erlang because Rabbtimq will install its dependency
+
+Download specific version of RabbitMQ from bintray.com
+For example VMware said that 3.7.9 and 3.8.2 then i used https://bintray.com/rabbitmq/all/rabbitmq-server/3.8.2 to download
+Downloaded rabbitmq-server-3.8.2-1.el8.noarch.rpm and installed it 
+
+dnf install -y /tmp/rabbitmq-server-3.8.2-1.el8.noarch.rpm 
+
+Check status for me nothing started yet
+[root@vcdrabbitmq ~]# rabbitmqctl status
+Status of node rabbit@vcdrabbitmq ...
+Error: unable to connect to node rabbit@vcdrabbitmq: nodedown
+
+systemctl enable --now rabbitmq-server
+
+Activate GUI for Management and Monitor
+
+rabbitmq-plugins enable rabbitmq_management
+
+Check Status 
+
+rabbitmqctl status
+
+
+Not : Centos 8 local configuration file is looks like changed, before i was using /etc/environment but right now its /etc/locale.conf 
+LC_ALL=en_US.utf-8
+Use "locale" to get all settings ...
+
+To access webmanagement and default username and pass are (guest/guest)
+http://<ip>:15672/
+
+To see what other plugins are installed or installable execute command below
+
+rabbitmq-plugins list
+
+To Create User
+
+rabbitmqctl add_user vcdrabbit password_for_admini
+Creating user "vcdrabbit" ...
+...done.
+
+To Assign Role to User
+
+rabbitmqctl set_user_tags vcdrabbit administrator
+Setting tags for user "vcdrabbit" to [administrator] ...
+...done.
+
+To Set Permissons
+
+rabbitmqctl set_permissions -p / vcdrabbit ".*" ".*" ".*"
+Setting permissions for user "vcdrabbit" in vhost "/" ...
+...done.
+
+Dont forget to delete guest
+
+rabbitmqctl delete_user guest
+
+Be aware about files size limits ...
+
+Default there is no "Config file(s): (none)" i saw ....
+systemctl status rabbitmq-server
+
+Command Referance
+https://www.rabbitmq.com/rabbitmqctl.8.html

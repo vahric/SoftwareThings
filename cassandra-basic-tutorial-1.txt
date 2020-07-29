@@ -3,6 +3,7 @@ Datacenter = collection of nodes
 Cluster = collection of datacenters
 No any leader node
 Only cordination node is there and any node could act like that
+Gossip Protocol Used for peer to peer communication, nodes are arranged ring format
 
 Replication Factor : How many copy of data (per database)
 Replicaiton Strategy : 
@@ -13,11 +14,17 @@ Background Read Repair : if replicas return out of date value then read repair p
 
 Data Modeling
 
+Column data saved k/v style
+Collection of columnds maked a raw
+All raws makes collection family
 Writes are not expensive, no join,no group by,no OR , no aggregations
 Maximize write , Maximize Data Duplicaiton
 Spread data to whole cluster
 Number of partition is important to get paralel performance
 Partitions are keys like primary keys but also data distributed by partitions
+Each node have partition value
+When client request a node, thay node become cordinator
+Partition key for example "name" and cassandra assign token/hash to key for distrubute data
 Also we have another key is which called clustering columns.
 Clustering columns used for ordering data and if primary key do not have uniqueness then its come true
 Default its ASC, ig you want to change use WITH CLUSTERING ORDER BY (state_province DESC, city ASC, gym_name ASC) to change the behaviour
@@ -91,7 +98,7 @@ Compaction is clean-up process, it merge SSTables resolving conflicts by timesta
 
 Links:
 
-
+https://www.slideshare.net/knoldus/introduction-to-apache-cassandra-66854683
 https://www.hugopicado.com/2017/05/14/cassandra-the-tale-of-a-lonely-node.html
 https://www.guru99.com/cassandra-tutorial.html
 

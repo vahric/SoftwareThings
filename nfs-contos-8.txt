@@ -1,0 +1,124 @@
+Install NFS Server
+
+First up2date Linux node with new tool 
+
+dnf check-update
+dnf update
+
+Check Hostname
+
+hostnamectl status
+
+To set hostname
+
+hostnamectl set-hostname nfs1.server.com --static
+
+Some more parameters there like --static --pretty --transient
+
+Disable SELinux and Fireewalld
+
+vi /etc/selinux/config --> SELINUX=disabled
+systemctl disable firewalld
+
+*Not : if you will not disable selinux then you need to activate some booleans like below 
+
+setsebool -P nfs_export_all_ro 1
+setsebool -P nfs_export_all_rw 1
+
+https://www.systutorials.com/docs/linux/man/8-nfsd_selinux/
+
+Install required packages ...
+
+dnf install nfs-utils -y
+
+Activate for startup
+
+systemctl enable --now nfs-server rpcbind
+
+Create Folder to export
+
+cd /
+mkdir /vCDExportsFolder
+
+Export something via NFS
+
+vi /etc/exports
+
+/path_on_server           10.10.0.0/24(rw,sync,no_root_squash,no_subtree_check)
+
+Explanation : 
+
+rw : read/write
+sync: you are sure that data is written
+no_subtree_check : if whole volume exported use like this
+no_root_squash : if shared file need to be onwned by root otherwise remote root user will saved as nobody
+(This will map all the UIDs & GIDs from the client requests to identical UIDS and GIDs residing on the NFS server.)
+
+
+After each update of exports file execute command below 
+
+exportfs -a
+
+See what and how exported 
+
+exportfs -var
+
+See supported nfs versions inside
+
+cat /proc/fs/nfsd/versions
+-2 +3 +4 +4.1 +4.2
+
+NFS Server Configuration Files 
+
+/etc/nfsmount.conf 
+/etc/nfs.conf 
+
+On Client Site
+
+Be aware nfs-utils is installed if not you will get error below 
+ 
+mount: wrong fs type, bad option, bad superblock on 192.168.1.5:/home/shared, missing codepage or helper program, or other error (for several filesystems (e.g. nfs, cifs) you might need a /sbin/mount.<type> helper program)  
+In some cases useful info is found in syslog - try dmesg | tail or so.
+
+mount -t nfs ip_of_nfs_server:/path/exported/onfsserver/ /path/on/localhost 
+
+On Client Site fstab
+
+ip_of_nfs_server:/path/exported/onfsserver/  /client/mount/point   nfs      auto,noatime,nolock,bg,nfsvers=3,intr,tcp,actimeo=1800 0 0
+ip_of_nfs_server:/path/exported/onfsserver/  /client/mount/point   nfs      rsize=8192,wsize=8192,timeo=14,intr
+
+Mount Options : https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-nfs-client-config-options.html
+
+Other Informations : 
+
+Net-Tools
+
+netstat -i
+
+NFS Stat
+
+nfsstat -m
+*You can see the NFS version
+
+NFS Config Path 
+
+/etc/sysconfig/nfs
+
+Disable NFSv2 and NFSv3 for NFSv4 only (Not required just for information, idea)
+
+Replace the related line with below
+
+RPCNFSDARGS="-N 2 -N 3 -U"
+
+Disable Other Services which will be not needed anymore for nfs
+
+systemctl mask --now rpc-statd.service rpcbind.service rpcbind.socket
+
+And need to restart nfs
+
+systemctl restart nfs
+
+NFS Tuning1 : https://www.slashroot.in/how-do-linux-nfs-performance-tuning-and-optimization
+Diff systemctl mask and disable https://askubuntu.com/questions/816285/what-is-the-difference-between-systemctl-mask-and-systemctl-disable
+About NFS : https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/storage_administration_guide/ch-nfs
+Configure NFS Server : https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/storage_administration_guide/nfs-serverconfig#nfs4-only
