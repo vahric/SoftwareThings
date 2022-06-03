@@ -3,20 +3,23 @@
 # https://www.haproxy.com/documentation/hapee/latest/api/data-plane-api/installation/haproxy-community/
 
 Create Transaction (if you have)
-curl -X POST --user admin:'hopkop99!!!' http://212.58.14.147:5555/v2/services/haproxy/transactions?version=2
+curl -X POST --user admin:'youpassword' http://your_ip:5555/v2/services/haproxy/transactions?version=2
+#Note : Version is incremental, pls it will show you the way
+{"code":409,"message":"15: version in configuration file is 4, given version is 2"}
+noroot@haproxytest01:/etc/haproxy$ curl -X POST --user admin:'hopkop99!!!' http://your_ip:5555/v2/services/haproxy/transactions?version=4
 
 Get transaction Lists (Catch what you created before)
-curl -X GET --user admin:'hopkop99!!!' http://212.58.14.147:5555/v2/services/haproxy/transactions
+curl -X GET --user admin:'youpassword' http://your_ip:5555/v2/services/haproxy/transactions
 
 Get transaction Info (Not so meaningful)
-curl -X GET --user admin:'hopkop99!!!' http://212.58.14.147:5555/v2/services/haproxy/transactions/351acee5-6063-4470-8ad3-0bc96e903905
+curl -X GET --user admin:'youpassword' http://your_ip:5555/v2/services/haproxy/transactions/351acee5-6063-4470-8ad3-0bc96e903905
 
 Delete transaction (Trasaction already gone after commit)
-curl -X DELETE --user admin:'hopkop99!!!' http://212.58.14.147:5555/v2/services/haproxy/transactions/351acee5-6063-4470-8ad3-0bc96e903905
+curl -X DELETE --user admin:'youpassword' http://your_ip:5555/v2/services/haproxy/transactions/351acee5-6063-4470-8ad3-0bc96e903905
 
 # Your old config file will be mixed :D if you will use dataplane api then use api from first day
 Put(Commit) transaction (Write to the config)
-curl -X PUT --user admin:'hopkop99!!!' http://212.58.14.147:5555/v2/services/haproxy/transactions/10172c09-9876-442e-9c4c-ac9161464367
+curl -X PUT --user admin:'youpassword' http://your_ip:5555/v2/services/haproxy/transactions/10172c09-9876-442e-9c4c-ac9161464367
 
 [{"id":"3e9a0a9b-f911-45e4-82e2-c603f0ef24e9","status":"outdated"}]
 
@@ -27,6 +30,6 @@ Jun  3 07:30:49 haproxytest01 haproxy[409074]: [NOTICE]   (409074) : Loading suc
 
 #Example backend create
 Create Backend
-curl -X POST --user admin:'hopkop99!!!' -H "Content-Type: application/json" -d '{"name": "Vahric_backend", "mode":"http", "balance": {"algorithm":"roundrobin"}, "httpchk": {"method": "HEAD", "uri": "/", "version": "HTTP/1.1"}}' http://212.58.14.147:5555/v2/services/haproxy/configuration/backends?transaction_id=10172c09-9876-442e-9c4c-ac9161464367
+curl -X POST --user admin:'youpassword' -H "Content-Type: application/json" -d '{"name": "Vahric_backend", "mode":"http", "balance": {"algorithm":"roundrobin"}, "httpchk": {"method": "HEAD", "uri": "/", "version": "HTTP/1.1"}}' http://your_ip:5555/v2/services/haproxy/configuration/backends?transaction_id=10172c09-9876-442e-9c4c-ac9161464367
 
 #Do not forget commit after all
