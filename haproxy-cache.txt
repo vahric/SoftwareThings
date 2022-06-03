@@ -1,0 +1,59 @@
+Cache shoud not be bigger then 4095
+
+Jun  3 08:28:20 haproxytest01 haproxy[411672]: [WARNING]  (411672) : config : parsing [/etc/haproxy/haproxy.cfg:45]: "total-max-size" (10024) must not be greater than 4095
+Jun  3 08:28:20 haproxytest01 haproxy[411672]: [ALERT]    (411672) : config : Error(s) found in configuration file : /etc/haproxy/haproxy.cfg
+
+Looks like multiple 4GB cache could be, its allocated in memory
+
+noroot@haproxytest01:~$ free
+              total        used        free      shared  buff/cache   available
+Mem:       24626876      210280    24040712        1232      375884    24083628
+Swap:       4030460           0     4030460
+noroot@haproxytest01:~$ sudo systemctl restart haproxy.service 
+noroot@haproxytest01:~$ free
+              total        used        free      shared  buff/cache   available
+Mem:       24626876      336516     6289536    17565452    18000824     6374992
+Swap:       4030460           0     4030460
+
+Config
+
+# Ek
+# ########
+# Cache
+# ########
+# https://www.haproxy.com/blog/accelerate-your-apis-by-using-the-haproxy-cache/
+cache cachele
+  total-max-size 4095 # MB --> 4GB
+  max-object-size 1000000 # bytes --> 1 MB
+  # Cache-Control: public,s-maxage=10 - Cache Control HAProxy max-age değerinin üzerine yazabilir
+  max-age 30 # seconds
+
+cache cachele2
+  total-max-size 4095 # MB --> 4GB
+  max-object-size 1000000 # bytes --> 1 MB
+  # Cache-Control: public,s-maxage=10 - Cache Control HAProxy max-age değerinin üzerine yazabilir
+  max-age 30 # seconds
+
+cache cachele3
+  total-max-size 4095 # MB --> 4GB
+  max-object-size 1000000 # bytes --> 1 MB
+  # Cache-Control: public,s-maxage=10 - Cache Control HAProxy max-age değerinin üzerine yazabilir
+  max-age 30 # seconds
+
+#Reboot, Reload HAProxy getting some time after such cache config
+
+# Examples
+https://www.haproxy.com/documentation/hapee/latest/configuration/config-sections/cache/
+
+backend DefaultWebServers
+  balance roundrobin
+  option forwardfor
+  http-request cache-use cachele2
+  http-response cache-store cachele2
+  server WebServer1_1.1.6.100 1.1.6.100:80 check
+
+#Check Prometheus
+http://212.58.14.147:9100/
+
+haproxy_backend_http_cache_hits_total{proxy="DefaultWebServers"} 14
+haproxy_backend_http_cache_lookups_total{proxy="DefaultWebServers"} 17

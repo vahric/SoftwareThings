@@ -1,6 +1,10 @@
 
 # Community Edition Dataplane Install
 # https://www.haproxy.com/documentation/hapee/latest/api/data-plane-api/installation/haproxy-community/
+# Example Codes
+# https://www.haproxy.com/blog/new-haproxy-data-plane-api/
+# API Referance
+# https://www.haproxy.com/documentation/hapee/latest/api/data-plane-api/
 
 Create Transaction (if you have)
 curl -X POST --user admin:'youpassword' http://your_ip:5555/v2/services/haproxy/transactions?version=2
