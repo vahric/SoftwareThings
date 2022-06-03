@@ -6,7 +6,7 @@ Create Transaction (if you have)
 curl -X POST --user admin:'youpassword' http://your_ip:5555/v2/services/haproxy/transactions?version=2
 #Note : Version is incremental, pls it will show you the way
 {"code":409,"message":"15: version in configuration file is 4, given version is 2"}
-noroot@haproxytest01:/etc/haproxy$ curl -X POST --user admin:'hopkop99!!!' http://your_ip:5555/v2/services/haproxy/transactions?version=4
+noroot@haproxytest01:/etc/haproxy$ curl -X POST --user admin:'youpassword' http://your_ip:5555/v2/services/haproxy/transactions?version=4
 
 Get transaction Lists (Catch what you created before)
 curl -X GET --user admin:'youpassword' http://your_ip:5555/v2/services/haproxy/transactions
