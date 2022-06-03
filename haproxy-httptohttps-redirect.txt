@@ -1,0 +1,13 @@
+
+Different usage options available
+
+#Simple Redirect
+http-request redirect scheme https unless { ssl_fc }
+#Redirect with 301
+http-request redirect scheme https code 301 unless { ssl_fc }
+#Redirect with 301 and condition with reading domains from file
+http-request redirect scheme https code 301 if !{ hdr(Host) -i -f /etc/haproxy/urls  } !{ ssl_fc }
+#Or via single line 
+#For example, for hatest1ongluster1.doruk.net.tr and hatest1ongluster1.dorukcloud.com http request never will be redirected to https
+http-request redirect scheme https code 301 if !{ hdr(Host) -i 212.58.3.38 hatest1ongluster1.doruk.net.tr hatest1ongluster1.dorukcloud.com } !{ ssl_fc }
+

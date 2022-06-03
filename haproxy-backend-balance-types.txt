@@ -1,0 +1,8 @@
+backend http_back
+   balance roundrobin
+
+Roundrobin: Each server is used in turns according to their weights. This is the smoothest and fairest algorithm when the servers’ processing time remains equally distributed. This algorithm is dynamic, which allows server weights to be adjusted on the fly.
+
+Leastconn: The server with the lowest number of connections is chosen. Round-robin is performed between servers with the same load. Using this algorithm is recommended with long sessions, such as LDAP, SQL, TSE, etc, but it is not very well suited for short sessions such as HTTP.
+
+Source: The source IP address is hashed and divided by the total weight of the running servers to designate which server will receive the request. This way the same client IP address will always reach the same server while the servers stay the same.

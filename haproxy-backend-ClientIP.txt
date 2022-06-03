@@ -1,0 +1,4 @@
+backend DefaultWebServers
+  option forwardfor
+
+it will add X-Forwarded-For

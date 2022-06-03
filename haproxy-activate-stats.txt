@@ -1,0 +1,11 @@
+# -------------------------
+# Stats ....
+# -------------------------
+listen stats
+  bind your_ip:8000
+  stats enable                    # enable statistics reports
+  stats hide-version              # Hide the version of HAProxy
+  stats refresh 30s               # HAProxy refresh time
+  stats show-node                 # Shows the hostname of the node
+  stats auth admin:your_securepass       # Authentication for Stats page
+  stats uri /lb_stats             # Statistics URL

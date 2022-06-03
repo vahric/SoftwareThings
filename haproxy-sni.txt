@@ -1,0 +1,10 @@
+frontend SingleIP_MultipleSite_http_https
+  mode http
+  bind 2.x.x.x:80
+  bind 2.x.x.x.443 ssl crt /etc/ssl/certs/mycertificates/ alpn h2,http/1.1 ssl-min-ver TLSv1.2
+  default_backend DefaultWebServers
+
+
+We placed all files unders /etc/ssl/certs/mycertificates/ folder, made HTTP2 Frontend and do not accept lower then TLS 1.2
+
+This frontend will forward all requests to DefaultWebServers backedns , backends should be configured Name based virtual host

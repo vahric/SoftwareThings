@@ -1,0 +1,13 @@
+# ###############
+# Blocking/Deny Access
+# ###############
+acl blocked-ip src 212.58.13.88
+http-request deny if blocked-ip
+
+-f could be used and put everything inside file
+
+Use under frontend
+
+Some geo example
+https://www.haproxy.com/blog/use-geoip-database-within-haproxy/
+ 

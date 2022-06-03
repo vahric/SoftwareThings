@@ -1,0 +1,15 @@
+
+# -------------------------
+# https://www.haproxy.com/documentation/hapee/latest/observability/metrics/prometheus/
+# -------------------------
+frontend prometheus
+  bind 212.58.14.147:9100
+  http-request use-service prometheus-exporter
+
+
+Be sure haproxy compiled with prometheus-exporter
+
+noroot@haproxytest01:~$ haproxy -vv
+Built with the Prometheus exporter as a service
+
+Available services : prometheus-exporter

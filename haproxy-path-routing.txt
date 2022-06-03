@@ -1,0 +1,20 @@
+frontend SingleIP_MultipleSite_http_https
+  mode http
+  bind 2.x.x.x:80
+  bind 2.x.x.x:443 ssl crt /etc/ssl/certs/mycertificates/ alpn h2,http/1.1 ssl-min-ver TLSv1.2
+
+#Eğer istek /page-designer geliyor ise 
+  acl begins_with_api path_beg /page-designer
+
+  option httplog
+
+# O zaman bunun farklı bir backend 'e yönlendir oda "default" adlı backend
+  use_backend default if begins_with_api
+  default_backend DefaultWebServers
+
+backend default
+  http-request set-path /
+  server WebServer1_10.x.y.101 10.110.6.101:80 check
+
+backend DefaultWebServers
+  server WebServer2_10.x.y.102 10.110.6.101:80 check
