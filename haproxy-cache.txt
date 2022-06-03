@@ -57,3 +57,23 @@ http://212.58.14.147:9100/
 
 haproxy_backend_http_cache_hits_total{proxy="DefaultWebServers"} 14
 haproxy_backend_http_cache_lookups_total{proxy="DefaultWebServers"} 17
+
+#What is not cached
+https://www.haproxy.com/documentation/hapee/latest/configuration/config-sections/cache/
+
+
+            If the response is not a 200
+
+            If the response contains a Vary header
+
+            If the Content-Length and the size of the headers is greater than max-object-size
+
+            If the response is not cacheable
+
+            If the request is not a GET
+
+            If the HTTP version of the request is smaller than 1.1
+
+            If the request contains an Authorization header
+
+
