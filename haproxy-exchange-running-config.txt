@@ -1,0 +1,306 @@
+global
+        log /dev/log    local0
+        log /dev/log    local1 notice
+        chroot /var/lib/haproxy
+        stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+        stats timeout 30s
+        user haproxy
+        group haproxy
+        daemon
+
+        # Default SSL material locations
+        ca-base /etc/ssl/certs
+        crt-base /etc/ssl/private
+
+        # See: https://ssl-config.mozilla.org/#server=haproxy&server-version=2.0.3&config=intermediate
+        ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384
+        ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+        ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
+
+        # Global olarak SSL için verification gerekli dedik, self signed kullanamayacağımıza göre :)
+        ssl-server-verify required
+
+        # DH 2048
+        tune.ssl.default-dh-param 2048
+
+defaults
+        log     global
+        mode    http
+        option  httplog
+        option  dontlognull
+        timeout connect 5000
+        timeout client  50000
+        timeout server  50000
+        errorfile 400 /etc/haproxy/errors/400.http
+        errorfile 403 /etc/haproxy/errors/403.http
+        errorfile 408 /etc/haproxy/errors/408.http
+        errorfile 500 /etc/haproxy/errors/500.http
+        errorfile 502 /etc/haproxy/errors/502.http
+        errorfile 503 /etc/haproxy/errors/503.http
+        errorfile 504 /etc/haproxy/errors/504.http
+
+
+        # log-health-check haproxy loguna monitoringleri düşecek, bunun yerine haproxy stats da açabilirsiniz.
+        # redispatch olası backend timeout'da persistency'i uygulayıp çalışan başka backend node'a yönlendirme yapılması için.
+        # https://cbonte.github.io/haproxy-dconv/1.7/configuration.html#4-option%20redispatch
+        option log-health-checks
+        option redispatch
+
+# -------------------------
+# Loadbalancer Stats ....
+# -------------------------
+listen stats
+    bind haproxy_host_ip:8000
+    stats enable                    # enable statistics reports
+    stats hide-version              # Hide the version of HAProxy
+    stats refresh 10s               # HAProxy refresh time
+    stats show-node                 # Shows the hostname of the node
+    stats auth admin:yourtoosecures # Authentication for Stats page
+    stats uri /lb_stats             # Statistics URL
+
+
+# -------------------------
+# https://www.haproxy.com/documentation/hapee/latest/observability/metrics/prometheus/
+# -------------------------
+frontend prometheus
+   bind haproxy_host_ip:9100
+   http-request use-service prometheus-exporter
+
+# Netscaller VIP like
+# Frontend, kind a endpoint or listener
+# HTTP/HTTPS L7
+
+frontend doruknet_exchange_mail_saas_services_http_https
+# Keepalived üzerinden yönetilen ip adresi ve http/https portlarini dinliyoruz 
+   bind VIP_ip:80
+   bind VIP_ip:443 ssl crt /etc/ssl/certs/STAR_certificate-2022-23.pem alpn h2,http/1.1 ssl-min-ver TLSv1.2
+# This means that the page can only be embedded in a frame on a page with the same origin as itself. 
+# https://credoinfolit.zendesk.com/hc/en-us/articles/360038339213-X-Frame-Options-Set-to-Deny
+   http-response set-header X-Frame-Options SAMEORIGIN
+
+# This means that the page can only be embedded in a frame on a page with the same origin as itself.
+# https://www.keycdn.com/support/x-content-type-options
+   http-response set-header X-Content-Type-Options nosniff
+
+# HSTS is a mechanism aimed to mitigate risks of downgrade attacks (https:// to http://) such as SSL Stripping. To enable HSTS, you just need to add a particular string to HTTP header sent by the server. 
+   http-response set-header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+# X-XSS-Protection
+# https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection
+   http-response set-header X-XSS-Protection "1; mode=block"
+
+# Allow Exchange Admin Center to certain private network only
+
+# Another option is using file to do it acl is-blocked-ip src -f /etc/haproxy/blocklisted.ips
+# https://www.haproxy.com/documentation/hapee/latest/configuration/acls/overview/
+# https://www.haproxy.com/blog/introduction-to-haproxy-acls/
+
+    http-request deny if { path -i -m beg /ecp } ! { src your_ip_block/24 }
+
+# redirect all HTTP traffic to HTTPS
+    http-request redirect scheme https code 301 if !{ ssl_fc }
+
+# Set the proxy mode to http (layer 7) or tcp (layer 4)
+   mode http
+# HTTP logging   
+   option httplog
+
+# ACL and catch url
+
+   acl autodiscover path_beg /Autodiscover
+   acl mapi path_beg /mapi
+   acl owa path_beg /owa
+   acl eas path_beg /Microsoft-Server-ActiveSync
+   acl ecp path_beg /ecp
+   acl ews path_beg /EWS
+   acl oab path_beg /OAB
+
+# Path based routing, use_backend is specific, default is like a catch all
+
+   use_backend ex2019_autodiscover if autodiscover
+   use_backend ex2019_mapi if mapi
+   use_backend ex2019_owa if owa
+   use_backend ex2019_activesync if eas
+   use_backend ex2019_ecp if ecp
+   use_backend ex2019_ews if ews
+   use_backend ex2019_oab if oab
+   default_backend ex2019http
+
+
+# frontend SMTP 25
+
+frontend doruknet_exchange_mail_saas_services_smtp25
+# Set the proxy mode to http (layer 7) or tcp (layer 4)
+   mode tcp
+# HTTP logging 
+   option tcplog
+# Listen port 25
+# We can listen port range bind 10.0.0.5:2000-2100 or ipv6 ipv6@:80
+   bind VIP_ip:25
+# Use default backend ex2019
+   default_backend ex2019tcp25
+
+# frontend SMTP 587
+
+frontend doruknet_exchange_mail_saas_services_smtp587
+# Set the proxy mode to http (layer 7) or tcp (layer 4)
+   mode tcp
+# HTTP logging 
+   option tcplog
+# Listen port 587
+# We can listen port range bind 10.0.0.5:2000-2100 or ipv6 ipv6@:80
+   bind VIP_ip:587
+# Use default backend ex2019
+   default_backend ex2019tcp587
+
+# frontend IMAPs 993
+
+frontend doruknet_exchange_mail_saas_services_imap993
+# Set the proxy mode to http (layer 7) or tcp (layer 4)
+   mode tcp
+# HTTP logging 
+   option tcplog
+# Listen port 993
+# We can listen port range bind 10.0.0.5:2000-2100 or ipv6 ipv6@:80
+   bind VIP_ip:993
+# Use default backend ex2019
+   default_backend ex2019tcp993
+
+# BACKENDsssss
+
+backend ex2019_autodiscover
+
+   mode http
+# the source IP address is hashed and divided by the total weight of the running servers
+# source with the same IP address will always be directed to the same server
+   balance source
+# Making service control really working or not application kind monitoring not tcp or ping
+   option httpchk GET /autodiscover/healthcheck.htm
+# Log the healt checks
+   option log-health-checks
+# Expected check response
+   http-check expect status 200
+   server gerald 10.111.114.20:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+   server ciri 10.111.114.21:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+
+backend ex2019_mapi
+
+   mode http
+# the source IP address is hashed and divided by the total weight of the running servers
+# source with the same IP address will always be directed to the same server
+   balance source
+# Making service control really working or not application kind monitoring not tcp or ping
+   option httpchk GET /mapi/healthcheck.htm
+# Log the healt checks
+   option log-health-checks
+# Expected check response
+   http-check expect status 200
+   server gerald 10.111.114.20:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+   server ciri 10.111.114.21:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+
+backend ex2019_owa
+
+   mode http
+# the source IP address is hashed and divided by the total weight of the running servers
+# source with the same IP address will always be directed to the same server
+   balance source
+# Making service control really working or not application kind monitoring not tcp or ping
+   option httpchk GET /owa/healthcheck.htm
+# Log the healt checks
+   option log-health-checks
+# Expected check response
+   http-check expect status 200
+   server gerald 10.111.114.20:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+   server ciri 10.111.114.21:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+
+backend ex2019_activesync
+
+   mode http
+# the source IP address is hashed and divided by the total weight of the running servers
+# source with the same IP address will always be directed to the same server
+   balance source
+# Making service control really working or not application kind monitoring not tcp or ping
+   option httpchk GET /microsoft-server-activesync/healthcheck.htm
+# Log the healt checks
+   option log-health-checks
+# Expected check response
+   http-check expect status 200
+   server gerald 10.111.114.20:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+   server ciri 10.111.114.21:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+
+
+backend ex2019_ecp
+
+   mode http
+# the source IP address is hashed and divided by the total weight of the running servers
+# source with the same IP address will always be directed to the same server
+   balance source
+# Making service control really working or not application kind monitoring not tcp or ping
+   option httpchk GET /ecp/healthcheck.htm
+# Log the healt checks
+   option log-health-checks
+# Expected check response
+   http-check expect status 200
+   server gerald 10.111.114.20:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+   server ciri 10.111.114.21:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+
+
+backend ex2019_ews
+
+   mode http
+# the source IP address is hashed and divided by the total weight of the running servers
+# source with the same IP address will always be directed to the same server
+   balance source
+# Making service control really working or not application kind monitoring not tcp or ping
+   option httpchk GET /ews/healthcheck.htm
+# Log the healt checks
+   option log-health-checks
+# Expected check response
+   http-check expect status 200
+   server gerald 10.111.114.20:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+   server ciri 10.111.114.21:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+
+backend ex2019_oab
+
+   mode http
+# the source IP address is hashed and divided by the total weight of the running servers
+# source with the same IP address will always be directed to the same server
+   balance source
+# Making service control really working or not application kind monitoring not tcp or ping
+   option httpchk GET /oab/healthcheck.htm
+# Log the healt checks
+   option log-health-checks
+# Expected check response
+   http-check expect status 200
+   server gerald 10.111.114.20:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+   server ciri 10.111.114.21:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+
+backend ex2019http
+   mode http
+   server gerald 10.111.114.20:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+   server ciri 10.111.114.21:443 check maxconn 1000 ssl ca-file /etc/ssl/certs/ca-certificates.crt
+
+backend ex2019tcp25
+   mode tcp
+   option log-health-checks
+# Weight for load balance differents
+   server gerald 10.111.114.20:25 weight 20 check
+   server ciri 10.111.114.21:25 weight 10 check
+
+backend ex2019tcp587
+   mode tcp
+   option log-health-checks
+# Weight for load balance differents
+   server gerald 10.111.114.20:587 weight 20 check
+   server ciri 10.111.114.21:587 weight 10 check
+
+backend ex2019tcp993
+   mode tcp
+   option log-health-checks
+# Weight for load balance differents
+   server gerald 10.111.114.20:993 weight 20 check
+   server ciri 10.111.114.21:993 weight 10 check
+
+
+# Make config check
+# haproxy -f /etc/haproxy/haproxy.cfg -c
