@@ -1,0 +1,9 @@
+1) Dinamik inventory oluşturma
+
+2) Sunucu kurulumlarında key kullanarak sudo hakkı olan bir kullanıcı ile işlem yapma
+
+3) key gerekiyor ise variable olarak ekleme
+
+4) variable'ları ekleme
+
+5) vault kullanma

@@ -1,0 +1,29 @@
+---
+Trying to access same user and its own key to connect remote server and its failing
+---
+noroot@a1:~$ ansible all -i inventory1 -m ping
+10.111.177.181 | UNREACHABLE! => {
+    "changed": false,
+    "msg": "Failed to connect to the host via ssh: noroot@10.111.177.181: Permission denied (publickey,password).",
+    "unreachable": true
+}
+
+
+---
+To ask password
+---
+ansible all -i inventory1 -m ping --ask-pass
+
+
+
+---
+Sudo hakkı vermediğinizde oluşan hata
+---
+TASK [Update APT cache] **************************************************************************************************************************************************************************
+fatal: [10.111.177.183]: FAILED! => {"changed": false, "msg": "Failed to lock apt for exclusive operation: Failed to lock directory /var/lib/apt/lists/: E:Could not open lock file /var/lib/apt/lists/lock - open (13: Permission denied)"}
+
+---
+--ask-become-pass verilmediğinde
+---
+TASK [Gathering Facts] ***************************************************************************************************************************************************************************
+fatal: [10.111.177.182]: FAILED! => {"msg": "Missing sudo password"}

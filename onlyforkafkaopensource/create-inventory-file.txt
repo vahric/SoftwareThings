@@ -1,0 +1,10 @@
+touch inventory1
+
+vi inventory1
+
+[kafka_brokers]
+10.111.177.181
+10.111.177.182
+10.111.177.183
+
+*save the file end exit

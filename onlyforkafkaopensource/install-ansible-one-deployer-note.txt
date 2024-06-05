@@ -1,0 +1,42 @@
+sudo apt update
+sudo apt --yes install software-properties-common # Generally already installed
+sudo add-apt-repository --yes --update ppa:ansible/ansible # To install 3th party easyly
+sudo apt --yes install ansible # Install ansible
+
+Fallow this doc if you want https://docs.ansible.com/ansible/latest/installation_guide/installation_distros.html#installing-ansible-on-ubuntu
+
+root@a1:/home/noroot# ansible --version
+ansible [core 2.16.7]
+  config file = /etc/ansible/ansible.cfg
+  configured module search path = ['/root/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /usr/lib/python3/dist-packages/ansible
+  ansible collection location = /root/.ansible/collections:/usr/share/ansible/collections
+  executable location = /usr/bin/ansible
+  python version = 3.10.12 (main, Nov 20 2023, 15:14:05) [GCC 11.4.0] (/usr/bin/python3)
+  jinja version = 3.0.3
+  libyaml = True
+
+ansible [core 2.15.5] - Currently installed Ansible version;
+config file - The Ansible configuration file path;
+configured module search path - Directories where Ansible will search for modules;
+Ansible Python module location;
+ansible collection location - Collections are a distribution format for Ansible content, including playbooks, Ansible roles, modules, and plugins;
+executable location: The path to the Ansible executable;
+Python version;
+jinja version - The version of the Python templating engine. Ansible uses Jinja2 for templating needs, such as generating template configuration files;
+libyaml = True - This line indicates the user of the LibYAML library. LibYAML allows faster reading of YAML files. It is better to set it to true since Ansible relies heavily on YAML for tasks such as playbooks and settings.
+
+
+Get the inventory list
+
+noroot@a1:~$ ansible-inventory -i inventory1 --list -y
+all:
+  children:
+    kafka_brokers:
+      hosts:
+        10.111.177.181: {}
+        10.111.177.182: {}
+        10.111.177.183: {}
+
+
+

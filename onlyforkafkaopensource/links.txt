@@ -1,0 +1,19 @@
+Ansible Community Documentation
+ansible.builtin.apt module
+https://docs.ansible.com/ansible/latest/collections/ansible/builtin/apt_module.html
+
+---
+
+How to Configure a New Ubuntu Server with Ansible
+
+https://docs.vultr.com/how-to-configure-a-new-ubuntu-server-with-ansible
+
+
+---
+
+Ansible Vault
+
+https://docs.ansible.com/ansible/2.9/user_guide/vault.html
+
+---
+

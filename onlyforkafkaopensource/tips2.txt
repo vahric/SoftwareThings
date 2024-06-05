@@ -1,0 +1,8 @@
+# --ask-pass ssh şifresi
+# --ask-become-pass ; privilege escalation şifresi sudo su yaparken root şifresini vermek gibi
+ansible-playbook -i inventory1 test.yaml --ask-pass --ask-become-pass
+
+---
+Register is used to capture the output of any task and store it in a variable.
+
+---
